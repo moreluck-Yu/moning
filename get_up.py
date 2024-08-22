@@ -101,7 +101,7 @@ def make_get_up_message():
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
     # 3 - 7 means early for me
-    is_get_up_early = 3 <= now.hour <= 7
+    is_get_up_early = 1 <= now.hour <= 12
     try:
         images_list = make_pic_and_save(sentence)
     except Exception as e:
