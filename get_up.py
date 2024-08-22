@@ -70,7 +70,6 @@ def get_today_get_up_status(issue):
 
 
 def make_pic_and_save(sentence):
-    print(f"Attempting to make pic for sentence: {sentence}")
     prompt = f"revise `{sentence}` to a stable diffusion prompt"
     try:
         completion = client.chat.completions.create(
@@ -97,8 +96,6 @@ def make_pic_and_save(sentence):
     # try to use this to generate video
     i = ImageGen(KLING_COOKIE)
     images_list = i.get_images(sentence)
-    return images_list
-    print(f"Images generated: {len(images_list)}")
     return images_list
 
 
@@ -152,11 +149,9 @@ def main(
     repo = u.get_repo(repo_name)
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
     is_today = get_today_get_up_status(issue)
-    print(f"Is today already recorded? {is_today}")
     if is_today:
-        print("Today's wake up time already recorded, exiting")
+        print("Today I have recorded the wake up time")
         return
-    print("Recording today's wake up time")
     yesterday_question = get_yesterday_question()
     sentence, is_get_up_early, images_list = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
@@ -166,9 +161,7 @@ def main(
         weather_message = f"现在的天气是{weather_message}\n"
         body = weather_message + early_message
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
-    print(f"is_get_up_early: {is_get_up_early}")
     if is_get_up_early:
-        print("Attempting to create comment and send Telegram message")
         comment = body + f"![image]({images_list[0]})"
         issue.create_comment(comment)
         # send to telegram
@@ -198,8 +191,7 @@ def main(
                     disable_notification=True,
                 )
     else:
-        ##print("You wake up late")
-        print("Script execution completed")
+        print("You wake up late")
 
 
 if __name__ == "__main__":
