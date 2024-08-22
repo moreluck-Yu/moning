@@ -162,38 +162,71 @@ def main(
         weather_message = f"现在的天气是{weather_message}\n"
         body = weather_message + early_message
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
-    if is_get_up_early:
-        comment = body + f"![image]({images_list[0]})"
-        issue.create_comment(comment)
-        # send to telegram
-        if tele_token and tele_chat_id:
-            bot = telebot.TeleBot(tele_token)
-
+    
+    comment = body + (f"![image]({images_list[0]})" if images_list else "")
+    issue.create_comment(comment)
+    
+    if tele_token and tele_chat_id:
+        bot = telebot.TeleBot(tele_token)
+        try:
+            # 首先尝试发送图片消息
             if images_list:
                 try:
                     photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
                     photos_list[0].caption = body
-                    bot.send_media_group(
-                        tele_chat_id, photos_list, disable_notification=True
-                    )
+                    bot.send_media_group(tele_chat_id, photos_list, disable_notification=True)
+                    print("Successfully sent photos to Telegram")
                 except Exception as e:
-                    print(str(e))
-                v = VideoGen(KLING_COOKIE)
-                v.save_video(
-                    sentence,
-                    "./output",
-                    image_url=images_list[0],
-                    is_high_quality=True,
-                )
-                bot.send_video(
-                    tele_chat_id,
-                    open("output/0.mp4", "rb"),  # TODO fix this shit
-                    caption="新的一天",
-                    disable_notification=True,
-                )
-            
+                    print(f"Error sending photos to Telegram: {str(e)}")
+                    # 如果发送图片失败，发送带有图片链接的文本消息
+                    image_links = "\n".join(images_list)
+                    text_with_links = f"{body}\n\n图片链接:\n{image_links}"
+                    bot.send_message(tele_chat_id, text_with_links, disable_notification=True)
+                    print("Sent text message with image links to Telegram")
+            else:
+                # 如果没有图片，只发送文本消息
+                bot.send_message(tele_chat_id, body, disable_notification=True)
+                print("Sent text-only message to Telegram (no images)")
+        
+            # 尝试生成和发送视频
+            if KLING_COOKIE and images_list:
+                try:
+                    v = VideoGen(KLING_COOKIE)
+                    print(f"Attempting to save video with sentence: {sentence}")
+                    print(f"Using image URL: {images_list[0]}")
+                    v.save_video(
+                        sentence,
+                        "./output",
+                        image_url=images_list[0],
+                        is_high_quality=True,
+                    )
+                    # 发送视频
+                    with open("output/0.mp4", "rb") as video_file:
+                        bot.send_video(
+                            tele_chat_id,
+                            video_file,
+                            caption="新的一天",
+                            disable_notification=True,
+                        )
+                    print("Successfully sent video to Telegram")
+                except Exception as e:
+                    print(f"Error generating or sending video: {str(e)}")
+                    bot.send_message(tele_chat_id, "抱歉，视频生成失败了。", disable_notification=True)
+            else:
+                print("Skipping video generation (no KLING_COOKIE or no images)")
+        
+        except Exception as e:
+            print(f"Unexpected error in Telegram message sending: {str(e)}")
+            # 如果所有尝试都失败，发送一个简单的文本消息
+            try:
+                bot.send_message(tele_chat_id, "今天的更新遇到了一些问题，但新的一天已经开始了！", disable_notification=True)
+                print("Sent fallback message to Telegram due to errors")
+            except Exception as e:
+                print(f"Failed to send even the fallback message: {str(e)}")
+        
+        print("Telegram messaging process completed")
     else:
-        print("You wake up late")
+        print("Telegram token or chat ID not provided, skipping Telegram messages")
 
     print("Successfully recorded today's wake up time")
     print("Script execution completed")
