@@ -148,7 +148,7 @@ def main(
     tele_token,
     tele_chat_id,
 ):
-     print("Starting main function")
+    print("Starting main function")
     u = login(github_token)
     repo = u.get_repo(repo_name)
     print(f"Successfully accessed repo: {repo_name}")
