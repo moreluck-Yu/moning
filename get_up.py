@@ -146,7 +146,7 @@ def main(
     repo_name,
     weather_message,
     tele_token,
-    tele_chat_id,
+    tele_chat_id
 ):
     print("Starting main function")
     u = login(github_token)
@@ -172,15 +172,6 @@ def main(
     print(f"Is get up early? {is_get_up_early}")
     print(f"Number of images generated: {len(images_list) if images_list else 0}")
 
-    u = login(github_token)
-    repo = u.get_repo(repo_name)
-    issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
-    is_today = get_today_get_up_status(issue)
-    if is_today:
-        print("Today I have recorded the wake up time")
-        return
-    yesterday_question = get_yesterday_question()
-    sentence, is_get_up_early, images_list = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
     body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence)
     early_message = body
