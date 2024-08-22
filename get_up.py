@@ -178,27 +178,20 @@ def main(
                     )
                 except Exception as e:
                     print(str(e))
-                try:
-                    v = VideoGen(KLING_COOKIE)
-                    print(f"Attempting to save video with sentence: {sentence}")
-                    print(f"Using image URL: {images_list[0]}")
-                    v.save_video(
-                        sentence,
-                        "./output",
-                        image_url=images_list[0] if images_list else None,
-                        is_high_quality=True,
-                    )
-                    bot.send_video(
-                        tele_chat_id,
-                        open("output/0.mp4", "rb"),  # TODO fix this shit
-                        caption="新的一天",
-                        disable_notification=True,
-                    )
-                
-                except Exception as e:
-                        print(f"Error generating or sending video: {str(e)}")
-                        # 如果视频生成失败，可以选择只发送文本消息
-                        bot.send_message(tele_chat_id, "新的一天开始了，但是视频生成失败了。", disable_notification=True)
+                v = VideoGen(KLING_COOKIE)
+                v.save_video(
+                    sentence,
+                    "./output",
+                    image_url=images_list[0],
+                    is_high_quality=True,
+                )
+                bot.send_video(
+                    tele_chat_id,
+                    open("output/0.mp4", "rb"),  # TODO fix this shit
+                    caption="新的一天",
+                    disable_notification=True,
+                )
+            
     else:
         print("You wake up late")
 
