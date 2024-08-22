@@ -191,8 +191,12 @@ def main(
                     caption="新的一天",
                     disable_notification=True,
                 )
+            
     else:
         print("You wake up late")
+
+    print("Successfully recorded today's wake up time")
+    print("Script execution completed")
 
 
 if __name__ == "__main__":
