@@ -70,6 +70,7 @@ def get_today_get_up_status(issue):
 
 
 def make_pic_and_save(sentence):
+    print(f"Attempting to make pic for sentence: {sentence}")
     prompt = f"revise `{sentence}` to a stable diffusion prompt"
     try:
         completion = client.chat.completions.create(
@@ -96,6 +97,8 @@ def make_pic_and_save(sentence):
     # try to use this to generate video
     i = ImageGen(KLING_COOKIE)
     images_list = i.get_images(sentence)
+    return images_list
+    print(f"Images generated: {len(images_list)}")
     return images_list
 
 
@@ -145,6 +148,30 @@ def main(
     tele_token,
     tele_chat_id,
 ):
+     print("Starting main function")
+    u = login(github_token)
+    repo = u.get_repo(repo_name)
+    print(f"Successfully accessed repo: {repo_name}")
+    
+    issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
+    print(f"Accessed issue number: {GET_UP_ISSUE_NUMBER}")
+    
+    is_today = get_today_get_up_status(issue)
+    print(f"Is today already recorded? {is_today}")
+    
+    if is_today:
+        print("Today's wake up time already recorded, exiting")
+        return
+    
+    print("Generating yesterday's question")
+    yesterday_question = get_yesterday_question()
+    
+    print("Making get up message")
+    sentence, is_get_up_early, images_list = make_get_up_message()
+    
+    print(f"Is get up early? {is_get_up_early}")
+    print(f"Number of images generated: {len(images_list) if images_list else 0}")
+
     u = login(github_token)
     repo = u.get_repo(repo_name)
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
