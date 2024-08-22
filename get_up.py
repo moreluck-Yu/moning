@@ -148,11 +148,9 @@ def main(
     tele_token,
     tele_chat_id,
 ):
-    print(f"Starting main function with repo_name: {repo_name}")
     u = login(github_token)
     repo = u.get_repo(repo_name)
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
-    print(f"Successfully got issue: {issue.number}")
     is_today = get_today_get_up_status(issue)
     print(f"is_today: {is_today}")
     if is_today:
