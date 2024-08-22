@@ -59,12 +59,10 @@ def get_one_sentence():
 def get_today_get_up_status(issue):
     comments = list(issue.get_comments())
     if not comments:
-        return False, []
+        return False
     latest_comment = comments[-1]
     now = pendulum.now(TIMEZONE)
-    latest_day = pendulum.instance(latest_comment.created_at).in_timezone(
-        "Asia/Shanghai"
-    )
+    latest_day = pendulum.instance(latest_comment.created_at).in_timezone(TIMEZONE)
     is_today = (latest_day.day == now.day) and (latest_day.month == now.month)
     return is_today
 
@@ -149,9 +147,12 @@ def main(
     repo = u.get_repo(repo_name)
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
     is_today = get_today_get_up_status(issue)
+    print(f"Is today already recorded? {is_today}")
     if is_today:
-        print("Today I have recorded the wake up time")
+        print("Today's wake up time already recorded, exiting")
         return
+
+    print("Today's wake up time not yet recorded, proceeding to record")
     yesterday_question = get_yesterday_question()
     sentence, is_get_up_early, images_list = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
