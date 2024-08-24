@@ -11,24 +11,24 @@ from github import Github
 from openai import OpenAI
 from kling import VideoGen, ImageGen
 
-# 1 real get up #5 for test
+# Constants
 GET_UP_ISSUE_NUMBER = 1
 GET_UP_MESSAGE_TEMPLATE = "今天的起床时间是--{get_up_time}.\r\n\r\n起床啦。\r\n\r\n今天的一句诗:\r\n{sentence}\r\n"
-# in 2024-06-15 this one ssl error
 SENTENCE_API = "https://v1.jinrishici.com/all"
-
-DEFAULT_SENTENCE = (
-    "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
-)
+DEFAULT_SENTENCE = "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
 TIMEZONE = "Asia/Shanghai"
 YESTERDAY_QUESTION = "问我关于我昨天过的怎么样的五个问题。请不要包含这些问题：{questions}, 并只返回问题。"
+OUTPUT_DIR = Path("./output")
+VIDEO_FILENAME = "daily_video.mp4"
+IMAGE_OUTPUT_DIR = Path("OUT_DIR")
+
+# OpenAI client setup
 if api_base := os.environ.get("OPENAI_API_BASE"):
     client = OpenAI(base_url=api_base, api_key=os.environ.get("OPENAI_API_KEY"))
 else:
     client = OpenAI()
 
 KLING_COOKIE = os.environ.get("KLING_COOKIE")
-
 
 def get_all_til_knowledge_file():
     til_dir = Path(os.environ.get("MORNING_REPO_NAME"))
@@ -40,10 +40,8 @@ def get_all_til_knowledge_file():
                 md_files.append(os.path.join(root, file))
     return md_files
 
-
 def login(token):
     return Github(token)
-
 
 def get_one_sentence():
     try:
@@ -55,7 +53,6 @@ def get_one_sentence():
         print("get SENTENCE_API wrong")
         return DEFAULT_SENTENCE
 
-
 def get_today_get_up_status(issue):
     comments = list(issue.get_comments())
     if not comments:
@@ -65,7 +62,6 @@ def get_today_get_up_status(issue):
     latest_day = pendulum.instance(latest_comment.created_at).in_timezone(TIMEZONE)
     is_today = (latest_day.day == now.day) and (latest_day.month == now.month)
     return is_today
-
 
 def make_pic_and_save(sentence):
     prompt = f"revise `{sentence}` to a stable diffusion prompt"
@@ -81,27 +77,18 @@ def make_pic_and_save(sentence):
 
     now = pendulum.now()
     date_str = now.to_date_string()
-    new_path = os.path.join("OUT_DIR", date_str)
-    if not os.path.exists(new_path):
-        os.mkdir(new_path)
-    # response = client.images.generate(
-    #     model="dall-e-3", prompt=sentence, size="1024x1024", quality="standard", n=1
-    # )
-    # image_url_for_issue = response.model_dump()["data"][0]["url"]
-    # response = requests.get(image_url_for_issue)
-    # with open(f"{new_path}/1.png", "wb") as f:
-    #     f.write(response.content)
-    # try to use this to generate video
+    new_path = IMAGE_OUTPUT_DIR / date_str
+    new_path.mkdir(parents=True, exist_ok=True)
+
     i = ImageGen(KLING_COOKIE)
     images_list = i.get_images(sentence)
     return images_list
 
-
 def make_get_up_message():
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
-    # 3 - 7 means early for me
-    is_get_up_early = 1 <= now.hour <= 12
+
+    is_get_up_early = 0 <= now.hour <= 24
     try:
         images_list = make_pic_and_save(sentence)
     except Exception as e:
@@ -114,7 +101,6 @@ def make_get_up_message():
         except Exception as e:
             print(str(e))
     return sentence, is_get_up_early, images_list
-
 
 def get_yesterday_question():
     # get yesterday's questions
@@ -135,7 +121,6 @@ def get_yesterday_question():
         f.write(answer)
     return answer
 
-
 def main(
     github_token,
     repo_name,
@@ -147,12 +132,7 @@ def main(
     repo = u.get_repo(repo_name)
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
     is_today = get_today_get_up_status(issue)
-    print(f"Is today already recorded? {is_today}")
-    if is_today:
-        print("Today's wake up time already recorded, exiting")
-        return
-
-    print("Today's wake up time not yet recorded, proceeding to record")
+    
     yesterday_question = get_yesterday_question()
     sentence, is_get_up_early, images_list = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
@@ -177,27 +157,39 @@ def main(
                         tele_chat_id, photos_list, disable_notification=True
                     )
                 except Exception as e:
-                    print(str(e))
+                    print(f"Error sending photos: {str(e)}")
+
                 v = VideoGen(KLING_COOKIE)
+                OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+                video_path = OUTPUT_DIR / VIDEO_FILENAME
                 v.save_video(
                     sentence,
-                    "./output",
+                    str(OUTPUT_DIR),
                     image_url=images_list[0],
                     is_high_quality=True,
                 )
-                bot.send_video(
-                    tele_chat_id,
-                    open("output/0.mp4", "rb"),  # TODO fix this shit
-                    caption="新的一天",
-                    disable_notification=True,
-                )
+
+                try:
+                    with video_path.open("rb") as video_file:
+                        bot.send_video(
+                            tele_chat_id,
+                            video_file,
+                            caption="新的一天",
+                            disable_notification=True,
+                        )
+                except FileNotFoundError:
+                    print(f"Video file not found: {video_path}")
+                except IOError as e:
+                    print(f"Error reading video file: {e}")
+                finally:
+                    if video_path.exists():
+                        os.remove(video_path)
             
     else:
         print("You wake up late")
 
     print("Successfully recorded today's wake up time")
     print("Script execution completed")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
