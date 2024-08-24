@@ -175,22 +175,22 @@ def main(
                 logger.info(f"Video saved to {video_path}")
                 except Exception as e:
                     logger.error(f"Error generating video: {str(e)}")
-            else:
-                try:
-                    with video_path.open("rb") as video_file:
-                        bot.send_video(
-                            tele_chat_id,
-                            video_file,
-                            caption="新的一天",
-                            disable_notification=True,
-                        )
-                except FileNotFoundError:
-                    print(f"Video file not found: {video_path}")
-                except IOError as e:
-                    print(f"Error reading video file: {e}")
-                finally:
-                    if video_path.exists():
-                        os.remove(video_path)
+                else:
+                    try:
+                        with video_path.open("rb") as video_file:
+                            bot.send_video(
+                                tele_chat_id,
+                                video_file,
+                                caption="新的一天",
+                                disable_notification=True,
+                            )
+                    except FileNotFoundError:
+                        print(f"Video file not found: {video_path}")
+                    except IOError as e:
+                        print(f"Error reading video file: {e}")
+                    finally:
+                        if video_path.exists():
+                            os.remove(video_path)
             
     else:
         print("You wake up late")
