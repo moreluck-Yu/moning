@@ -5,4 +5,4 @@ rich
 openai
 pyTelegramBotAPI
 telegramify-markdown
-kling-creator>=0.3.1
+kling-creator @ git+https://github.com/yihong0618/klingCreator.git@2901c4f
