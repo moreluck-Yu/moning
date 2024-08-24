@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: Clear pip cache
+        run: pip cache purge
 
       - name: install python 3.10
         uses: actions/setup-python@v5
