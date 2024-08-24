@@ -7,6 +7,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+import kling
+logger.info(f"Using kling-creator version: {kling.__version__}")
+
 import pendulum
 import requests
 import telebot
