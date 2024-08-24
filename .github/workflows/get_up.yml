@@ -1,14 +1,17 @@
 name: GET UP
+
 on:
   workflow_dispatch:
     inputs:
       message:
         description: "weather message"
         required: false
+
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   KLING_COOKIE: ${{ secrets.KLING_COOKIE }}
   OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+
 jobs:
   sync:
     name: Build
@@ -16,22 +19,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: install python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
+          cache: "pip" # caching pip dependencies
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --force-reinstall git+https://github.com/yihong0618/klingCreator.git@main
-      - name: Check kling-creator version
-        run: |
-          python -c "from kling import __version__; print(f'kling-creator version: {__version__}')"
+
       - name: GET UP
         run: |
           python get_up.py ${{ secrets.G_T }} ${{ github.repository }}  --weather_message ": ${{ github.event.inputs.message }}" --tele_token ${{ secrets.TG_TOKEN }} --tele_chat_id ${{ secrets.TG_CHAT_ID }}
+
       - name: Push New Pic
         run: |
             git config --local user.email "action@github.com"
