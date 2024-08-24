@@ -7,6 +7,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
+
 import pendulum
 import requests
 import telebot
@@ -128,6 +130,7 @@ def get_yesterday_question():
 def main(
     github_token,
     repo_name,
+    weather_message,
     tele_token,
     tele_chat_id,
 ):
@@ -140,6 +143,10 @@ def main(
     sentence, is_get_up_early, images_list = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
     body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence)
+    early_message = body
+    if weather_message:
+        weather_message = f"现在的天气是{weather_message}\n"
+        body = weather_message + early_message
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
     if is_get_up_early:
         comment = body + f"![image]({images_list[0]})"
@@ -198,6 +205,9 @@ if __name__ == "__main__":
     parser.add_argument("github_token", help="github_token")
     parser.add_argument("repo_name", help="repo_name")
     parser.add_argument(
+        "--weather_message", help="weather_message", nargs="?", default="", const=""
+    )
+    parser.add_argument(
         "--tele_token", help="tele_token", nargs="?", default="", const=""
     )
     parser.add_argument(
@@ -207,6 +217,7 @@ if __name__ == "__main__":
     main(
         options.github_token,
         options.repo_name,
+        options.weather_message,
         options.tele_token,
         options.tele_chat_id,
     )
