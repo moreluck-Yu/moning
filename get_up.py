@@ -155,7 +155,7 @@ def main(
 
             if images_list:
                 try:
-                    photos_list = [InputMediaPhoto(i) for i in images_list[:3]]
+                    photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
                     photos_list[0].caption = body
                     bot.send_media_group(
                         tele_chat_id, photos_list, disable_notification=True
@@ -172,7 +172,7 @@ def main(
                         str(OUTPUT_DIR),
                         is_high_quality=True,
                     )
-                logger.info(f"Video saved to {video_path}")
+                    logger.info(f"Video saved to {video_path}")
                 except Exception as e:
                     logger.error(f"Error generating video: {str(e)}")
                 else:
