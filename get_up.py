@@ -2,6 +2,10 @@ import argparse
 import os
 from pathlib import Path
 import random
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 import pendulum
 import requests
@@ -151,7 +155,7 @@ def main(
 
             if images_list:
                 try:
-                    photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
+                    photos_list = [InputMediaPhoto(i) for i in images_list[:3]]
                     photos_list[0].caption = body
                     bot.send_media_group(
                         tele_chat_id, photos_list, disable_notification=True
@@ -162,13 +166,16 @@ def main(
                 v = VideoGen(KLING_COOKIE)
                 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
                 video_path = OUTPUT_DIR / VIDEO_FILENAME
-                v.save_video(
-                    sentence,
-                    str(OUTPUT_DIR),
-                    image_url=images_list[0],
-                    is_high_quality=True,
-                )
-
+                try:
+                    v.save_video(
+                        sentence,
+                        str(OUTPUT_DIR),
+                        is_high_quality=True,
+                    )
+                logger.info(f"Video saved to {video_path}")
+                except Exception as e:
+                    logger.error(f"Error generating video: {str(e)}")
+            else:
                 try:
                     with video_path.open("rb") as video_file:
                         bot.send_video(
