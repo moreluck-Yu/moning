@@ -172,7 +172,6 @@ def main(
                     v.save_video(
                         sentence,
                         str(OUTPUT_DIR),
-                        is_high_quality=True,
                     )
                     logger.info(f"Video saved to {video_path}")
                 except Exception as e:
