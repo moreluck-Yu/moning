@@ -174,8 +174,7 @@ def main(
                     sentence,
                     "./output",
                     image_url=images_list[0],
-                    
-                    model_name="1.5",
+                    model_name="1.0",
                 )
                 bot.send_video(
                     tele_chat_id,
