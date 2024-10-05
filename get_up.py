@@ -158,30 +158,41 @@ def main(
 
             if images_list:
                 try:
-                    # sleep for waiting for the image to be generated
-                    time.sleep(4)
                     photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
                     photos_list[0].caption = body
                     bot.send_media_group(
                         tele_chat_id, photos_list, disable_notification=True
                     )
-                    video_caption = "新的一天开始了"
                 except Exception as e:
-                    print(str(e))
-                    video_caption = body
+                    print(f"Error sending photos: {str(e)}")
+
                 v = VideoGen(KLING_COOKIE)
-                v.save_video(
-                    sentence,
-                    "./output",
-                    image_url=images_list[0],
-                    model_name="1.0",
-                )
-                bot.send_video(
-                    tele_chat_id,
-                    open("output/0.mp4", "rb"),  # TODO fix this shit
-                    caption=video_caption,
-                    disable_notification=True,
-                )
+                OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+                video_path = OUTPUT_DIR / VIDEO_FILENAME
+                try:
+                    v.save_video(
+                        sentence,
+                        str(OUTPUT_DIR),
+                    )
+                    logger.info(f"Video saved to {video_path}")
+                except Exception as e:
+                    logger.error(f"Error generating video: {str(e)}")
+                else:
+                    try:
+                        with video_path.open("rb") as video_file:
+                            bot.send_video(
+                                tele_chat_id,
+                                video_file,
+                                caption="新的一天",
+                                disable_notification=True,
+                            )
+                    except FileNotFoundError:
+                        print(f"Video file not found: {video_path}")
+                    except IOError as e:
+                        print(f"Error reading video file: {e}")
+                    finally:
+                        if video_path.exists():
+                            os.remove(video_path)
     else:
         print("You wake up late")
 
