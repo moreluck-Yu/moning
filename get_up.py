@@ -7,15 +7,13 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-
 import pendulum
 import requests
 import telebot
-from telebot.types import InputMediaPhoto, InputMediaVideo
+from telebot.types import InputMediaPhoto
 from github import Github
 from openai import OpenAI
-from kling import VideoGen, ImageGen
+from kling import ImageGen
 
 # Constants
 GET_UP_ISSUE_NUMBER = 1
@@ -24,8 +22,6 @@ SENTENCE_API = "https://v1.jinrishici.com/all"
 DEFAULT_SENTENCE = "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
 TIMEZONE = "Asia/Shanghai"
 YESTERDAY_QUESTION = "问我关于我昨天过的怎么样的五个问题。请不要包含这些问题：{questions}, 并只返回问题。"
-OUTPUT_DIR = Path("./output")
-VIDEO_FILENAME = "daily_video.mp4"
 IMAGE_OUTPUT_DIR = Path("OUT_DIR")
 
 # OpenAI client setup
@@ -154,7 +150,6 @@ def main(
         # send to telegram
         if tele_token and tele_chat_id:
             bot = telebot.TeleBot(tele_token)
-            video_caption = ""
 
             if images_list:
                 try:
@@ -165,34 +160,6 @@ def main(
                     )
                 except Exception as e:
                     print(f"Error sending photos: {str(e)}")
-
-                v = VideoGen(KLING_COOKIE)
-                OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-                video_path = OUTPUT_DIR / VIDEO_FILENAME
-                try:
-                    v.save_video(
-                        sentence,
-                        str(OUTPUT_DIR),
-                    )
-                    logger.info(f"Video saved to {video_path}")
-                except Exception as e:
-                    logger.error(f"Error generating video: {str(e)}")
-                else:
-                    try:
-                        with video_path.open("rb") as video_file:
-                            bot.send_video(
-                                tele_chat_id,
-                                video_file,
-                                caption="新的一天",
-                                disable_notification=True,
-                            )
-                    except FileNotFoundError:
-                        print(f"Video file not found: {video_path}")
-                    except IOError as e:
-                        print(f"Error reading video file: {e}")
-                    finally:
-                        if video_path.exists():
-                            os.remove(video_path)
     else:
         print("You wake up late")
 
