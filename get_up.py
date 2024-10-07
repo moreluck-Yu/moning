@@ -16,8 +16,7 @@ from openai import OpenAI
 from kling import ImageGen
 
 # Constants
-GET_UP_ISSUE_NUMBER = 1
-GET_UP_MESSAGE_TEMPLATE = "记录时间是--{get_up_time}.\r\n\r\n记得运动！！！\r\n\r\n今天的一句诗:\r\n{sentence}\r\n"
+GET_UP_MESSAGE_TEMPLATE = "#Now 记录时间是--{get_up_time}.\r\n\r\n记得运动！！！\r\n\r\n今天的一句诗:\r\n{sentence}\r\n"
 SENTENCE_API = "https://v1.jinrishici.com/all"
 DEFAULT_SENTENCE = "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
 TIMEZONE = "Asia/Shanghai"
@@ -141,7 +140,7 @@ def main(
     body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence)
     early_message = body
     if weather_message:
-        weather_message = f"现在的天气是{weather_message}\n"
+        weather_message = f"现在的天气是{weather_message}°\n"
         body = weather_message + early_message
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
     if is_get_up_early:
