@@ -87,6 +87,7 @@ def make_pic_and_save(sentence):
     return images_list
 
 def make_get_up_message():
+    images_list = []
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
 
