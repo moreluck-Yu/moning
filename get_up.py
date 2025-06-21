@@ -146,8 +146,16 @@ def main(
         body = weather_message + early_message
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
     if is_get_up_early:
-        comment = body + f"![image]({images_list[0]})"
+        # 安全地处理图片列表
+        if images_list and len(images_list) > 0:
+            comment = body + f"![image]({images_list[0]})"
+        else:
+            comment = body + "\n\n*今日暂无配图*"
+            print("Warning: No images generated, posting without image")
+        
         issue.create_comment(comment)
+    
+
         # send to telegram
         if tele_token and tele_chat_id:
             bot = telebot.TeleBot(tele_token)
