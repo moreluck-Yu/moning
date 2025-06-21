@@ -76,12 +76,12 @@ def make_pic_and_save(sentence):
         print(f"revies: {sentence}")
     except:
         print("revise sentence wrong")
-
+    
     now = pendulum.now()
     date_str = now.to_date_string()
     new_path = IMAGE_OUTPUT_DIR / date_str
     new_path.mkdir(parents=True, exist_ok=True)
-
+    
     i = ImageGen(KLING_COOKIE)
     images_list = i.get_images(sentence)
     return images_list
@@ -90,8 +90,8 @@ def make_get_up_message():
     images_list = []
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
-
     is_get_up_early = 0 <= now.hour <= 24
+    
     try:
         images_list = make_pic_and_save(sentence)
     except Exception as e:
@@ -103,6 +103,7 @@ def make_get_up_message():
             images_list = make_pic_and_save(sentence)
         except Exception as e:
             print(str(e))
+    
     return sentence, is_get_up_early, images_list
 
 def get_yesterday_question():
@@ -110,7 +111,7 @@ def get_yesterday_question():
     with open("questions.txt") as f:
         questions = f.read()
         print(questions)
-
+    
     completion = client.chat.completions.create(
         messages=[
             {"role": "user", "content": YESTERDAY_QUESTION.format(questions=questions)}
@@ -119,9 +120,11 @@ def get_yesterday_question():
     )
     answer = completion.choices[0].message.content.encode("utf8").decode()
     print(answer)
+    
     # write the answer to a file
     with open("questions.txt", "w") as f:
         f.write(answer)
+    
     return answer
 
 def main(
@@ -141,37 +144,68 @@ def main(
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
     body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence)
     early_message = body
+    
     if weather_message:
         weather_message = f"现在的天气是{weather_message}°\n"
         body = weather_message + early_message
+    
     body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
+    
     if is_get_up_early:
         # 安全地处理图片列表
         if images_list and len(images_list) > 0:
             comment = body + f"![image]({images_list[0]})"
+            print(f"GitHub comment will include image: {images_list[0]}")
         else:
             comment = body + "\n\n*今日暂无配图*"
             print("Warning: No images generated, posting without image")
         
-        issue.create_comment(comment)
-    
-
+        # 发送 GitHub 评论
+        try:
+            issue.create_comment(comment)
+            print("GitHub comment posted successfully")
+        except Exception as e:
+            print(f"Error posting GitHub comment: {str(e)}")
+        
         # send to telegram
         if tele_token and tele_chat_id:
-            bot = telebot.TeleBot(tele_token)
-
-            if images_list:
-                try:
-                    photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
-                    photos_list[0].caption = body
-                    bot.send_media_group(
-                        tele_chat_id, photos_list, disable_notification=True
-                    )
-                except Exception as e:
-                    print(f"Error sending photos: {str(e)}")
+            print(f"Attempting to send Telegram message to chat_id: {tele_chat_id}")
+            try:
+                bot = telebot.TeleBot(tele_token)
+                
+                if images_list and len(images_list) > 0:
+                    print("Sending Telegram message with images")
+                    try:
+                        photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
+                        photos_list[0].caption = body
+                        result = bot.send_media_group(
+                            tele_chat_id, photos_list, disable_notification=True
+                        )
+                        print(f"Telegram media group sent successfully")
+                    except Exception as e:
+                        print(f"Error sending photos to Telegram: {str(e)}")
+                        # 如果发送图片失败，发送纯文本消息
+                        try:
+                            result = bot.send_message(tele_chat_id, body, disable_notification=True)
+                            print(f"Telegram text message sent successfully as fallback")
+                        except Exception as text_error:
+                            print(f"Error sending text message to Telegram: {str(text_error)}")
+                else:
+                    # 如果没有图片，只发送文本消息
+                    print("Sending Telegram text message only")
+                    try:
+                        result = bot.send_message(tele_chat_id, body, disable_notification=True)
+                        print(f"Telegram text message sent successfully")
+                    except Exception as e:
+                        print(f"Error sending text message to Telegram: {str(e)}")
+                        
+            except Exception as bot_error:
+                print(f"Error initializing Telegram bot: {str(bot_error)}")
+        else:
+            print(f"Telegram not configured - token: {'SET' if tele_token else 'NOT SET'}, chat_id: {'SET' if tele_chat_id else 'NOT SET'}")
     else:
         print("You wake up late")
-
+    
     print("Successfully recorded today's wake up time")
     print("Script execution completed")
 
