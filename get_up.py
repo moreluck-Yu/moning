@@ -386,9 +386,9 @@ def get_unsplash_image_by_keywords(keywords: List[str]) -> Optional[str]:
 
 def make_pic_and_save(sentence: str) -> Optional[List[str]]:
     """
-    生成并保存图片，使用FastGPT FLUX.1 DEV模型直接生成AI图片
+    生成并保存图片，同时获取FastGPT AI图片和Unsplash备选图片
     """
-    logger.info(f"Starting image generation for sentence: {sentence}")
+    logger.info(f"Starting dual image generation for sentence: {sentence}")
     
     # 生成增强的提示词
     try:
@@ -404,22 +404,26 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
     new_path = IMAGE_OUTPUT_DIR / date_str
     new_path.mkdir(parents=True, exist_ok=True)
     
-    # 重试机制
+    images_list = []
+    
+    # 1. 尝试生成FastGPT AI图片
+    fastgpt_image = None
     for attempt in range(MAX_RETRY_ATTEMPTS):
         try:
-            logger.info(f"Image generation attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS}")
+            logger.info(f"FastGPT image generation attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS}")
             
             # 使用FastGPT FLUX.1 DEV模型直接生成AI图片
-            image_url = generate_image_with_fastgpt(enhanced_prompt)
+            fastgpt_image = generate_image_with_fastgpt(enhanced_prompt)
             
-            if image_url:
-                logger.info(f"Successfully generated image on attempt {attempt + 1}")
-                return [image_url]
+            if fastgpt_image:
+                logger.info(f"Successfully generated FastGPT image on attempt {attempt + 1}")
+                images_list.append(fastgpt_image)
+                break
             else:
-                logger.warning(f"Image generation returned no result (attempt {attempt + 1})")
+                logger.warning(f"FastGPT image generation returned no result (attempt {attempt + 1})")
                 
         except Exception as e:
-            logger.error(f"Image generation failed on attempt {attempt + 1}: {e}")
+            logger.error(f"FastGPT image generation failed on attempt {attempt + 1}: {e}")
             
             # 如果不是最后一次尝试，等待后重试
             if attempt < MAX_RETRY_ATTEMPTS - 1:
@@ -427,9 +431,31 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
                 logger.info(f"Waiting {delay} seconds before retry...")
                 time.sleep(delay)
             else:
-                logger.error("All image generation attempts failed")
+                logger.error("All FastGPT image generation attempts failed")
     
-    return None
+    # 2. 获取Unsplash备选图片
+    try:
+        logger.info("Getting Unsplash fallback image")
+        theme, analysis = analyze_poetry_theme(sentence)
+        unsplash_image = get_fallback_image(theme, analysis)
+        
+        if unsplash_image and unsplash_image not in images_list:
+            logger.info("Successfully got Unsplash fallback image")
+            images_list.append(unsplash_image)
+        else:
+            logger.warning("Failed to get Unsplash fallback image or duplicate")
+            
+    except Exception as e:
+        logger.error(f"Failed to get Unsplash fallback image: {e}")
+    
+    # 3. 如果都没有，使用静态备选图片
+    if not images_list:
+        logger.info("Using static fallback images")
+        static_image = random.choice(STATIC_FALLBACK_IMAGES)
+        images_list.append(static_image)
+    
+    logger.info(f"Final result: {len(images_list)} images available")
+    return images_list if images_list else None
 
 def make_get_up_message() -> Tuple[str, bool, List[str], str]:
     """
@@ -510,7 +536,7 @@ def main(
     
     
     if is_get_up_early:
-        # 安全地处理图片列表
+        # GitHub评论只显示第一张图片（通常是FastGPT生成的）
         if images_list and len(images_list) > 0:
             image_url = images_list[0]
             comment = body + f"![image]({image_url})"
@@ -523,6 +549,9 @@ def main(
             elif "fastgpt" in image_url.lower() or "flux" in image_url.lower():
                 comment += "\n\n*AI生成图片*"
                 logger.info("Using AI generated image for GitHub comment")
+            elif "unsplash.com" in image_url.lower():
+                comment += "\n\n*智能匹配图片*"
+                logger.info("Using Unsplash matched image for GitHub comment")
         else:
             comment = body + "\n\n*今日暂无配图*"
             logger.warning("No images available, posting without image")
@@ -541,26 +570,34 @@ def main(
                 bot = telebot.TeleBot(tele_token)
                 
                 if images_list and len(images_list) > 0:
-                    logger.info("Sending Telegram message with images")
+                    logger.info(f"Sending Telegram message with {len(images_list)} images")
                     try:
-                        # 检查图片类型
-                        is_static_fallback = any(img in STATIC_FALLBACK_IMAGES for img in images_list)
-                        is_ai_matched = any("fastgpt" in img.lower() or "flux" in img.lower() for img in images_list)
+                        # 分析图片类型
+                        has_fastgpt = any("fastgpt" in img.lower() or "flux" in img.lower() for img in images_list)
+                        has_unsplash = any("unsplash.com" in img.lower() for img in images_list)
+                        has_static = any(img in STATIC_FALLBACK_IMAGES for img in images_list)
+                        
+                        # 构建图片类型说明
+                        image_types = []
+                        if has_fastgpt:
+                            image_types.append("AI生成图片")
+                        if has_unsplash:
+                            image_types.append("智能匹配图片")
+                        if has_static:
+                            image_types.append("备选图片")
                         
                         caption = body
-                        if is_static_fallback:
-                            caption += "\n\n*使用备选图片*"
-                            logger.info("Using static fallback images for Telegram")
-                        elif is_ai_matched:
-                            caption += "\n\n*AI生成图片*"
-                            logger.info("Using AI generated images for Telegram")
+                        if image_types:
+                            caption += f"\n\n*图片类型: {', '.join(image_types)}*"
+                            logger.info(f"Telegram images types: {', '.join(image_types)}")
                         
+                        # 发送最多4张图片
                         photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
                         photos_list[0].caption = caption
                         result = bot.send_media_group(
                             tele_chat_id, photos_list, disable_notification=True
                         )
-                        logger.info("Telegram media group sent successfully")
+                        logger.info(f"Telegram media group sent successfully with {len(photos_list)} images")
                     except Exception as e:
                         logger.error(f"Error sending photos to Telegram: {str(e)}")
                         # 如果发送图片失败，发送纯文本消息
