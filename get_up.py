@@ -138,6 +138,10 @@ def analyze_poetry_theme(sentence: str) -> Tuple[str, dict]:
         analysis = json.loads(result)
         return analysis.get("theme", "default"), analysis
         
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse JSON from poetry theme analysis: {e}")
+        logger.error(f"Received content: {result}")
+        return "default", {"elements": ["mountain", "water", "sky"], "details": "serene landscape"}
     except Exception as e:
         logger.error(f"Failed to analyze poetry theme: {e}")
         return "default", {"elements": ["mountain", "water", "sky"], "details": "serene landscape"}
@@ -327,7 +331,7 @@ def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
             urls = re.findall(url_pattern, response_text)
             
             if urls:
-                image_url = urls[0]
+                image_url = urls[0].rstrip(')')
                 # 确保URL正确编码
                 import urllib.parse
                 parsed_url = urllib.parse.urlparse(image_url)
