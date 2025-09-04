@@ -128,7 +128,7 @@ def analyze_poetry_theme(sentence: str) -> Tuple[str, dict]:
         
         completion = client.chat.completions.create(
             messages=[{"role": "user", "content": analysis_prompt}],
-            model="gpt-4o-mini",
+            model="gemini-2.5-flash",
             temperature=0.3
         )
         
