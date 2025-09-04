@@ -12,7 +12,8 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  KLING_COOKIE: ${{ secrets.KLING_COOKIE }}
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
   OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
 
 jobs:
@@ -41,7 +42,7 @@ jobs:
         run: |
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
-            git add OUT_DIR/* knowledge.txt questions.txt
+            git add OUT_DIR/* knowledge.txt
             git commit -m "generated today pic" || echo "No changes to commit"
             git pull --rebase origin main
             git push origin main

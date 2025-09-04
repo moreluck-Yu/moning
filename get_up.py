@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import random
 import logging
+import time
+from typing import List, Optional, Tuple
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -13,16 +15,48 @@ import telebot
 from telebot.types import InputMediaPhoto
 from github import Github
 from openai import OpenAI
-from kling import ImageGen
 
 # Constants
 GET_UP_ISSUE_NUMBER = 1
-GET_UP_MESSAGE_TEMPLATE = "#Now 记录时间是--{get_up_time}.\r\n\r\n今天的一句诗:\r\n{sentence}\r\n"
+GET_UP_MESSAGE_TEMPLATE = "#Now 记录时间是--{get_up_time}.\r\n\r\n今天的一句诗:\r\n{sentence}\r\n\r\n📅 年度进度:\r\n{year_progress}\r\n"
 SENTENCE_API = "https://v1.jinrishici.com/all"
 DEFAULT_SENTENCE = "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
 TIMEZONE = "Asia/Shanghai"
-YESTERDAY_QUESTION = "问我关于我昨天过的怎么样的五个问题。请不要包含这些问题：{questions}, 并只返回问题。"
 IMAGE_OUTPUT_DIR = Path("OUT_DIR")
+
+# Image generation constants
+MAX_RETRY_ATTEMPTS = 3
+RETRY_DELAY_BASE = 2  # seconds
+IMAGE_GENERATION_TIMEOUT = 60  # seconds
+
+# Unsplash API configuration
+UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY")
+UNSPLASH_API_BASE = "https://api.unsplash.com"
+UNSPLASH_SEARCH_ENDPOINT = f"{UNSPLASH_API_BASE}/search/photos"
+
+# Static fallback images (used when Unsplash API fails)
+STATIC_FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",  # 日出
+    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800",  # 森林
+    "https://images.unsplash.com/photo-1464822759844-d150baec5b1b?w=800",  # 山景
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",  # 湖泊
+]
+
+# Poetry to Unsplash keywords mapping
+POETRY_KEYWORDS_MAPPING = {
+    "nature": ["landscape", "nature", "mountain", "forest", "river", "lake", "sky"],
+    "season": ["spring", "summer", "autumn", "winter", "seasonal", "bloom", "snow"],
+    "emotion": ["peaceful", "serene", "calm", "tranquil", "meditation", "zen"],
+    "default": ["beautiful", "scenic", "artistic", "poetic", "landscape", "nature"]
+}
+
+# Poetry prompt templates
+POETRY_PROMPT_TEMPLATES = {
+    "nature": "Create a beautiful, serene landscape image inspired by Chinese poetry. Style: traditional Chinese ink painting meets modern digital art. Elements: {elements}. Mood: peaceful, contemplative, ethereal. Colors: soft pastels with traditional Chinese color palette. Quality: high resolution, detailed, artistic.",
+    "season": "Generate a seasonal scene that captures the essence of Chinese poetry. Season: {season}. Style: blend of traditional Chinese art and contemporary digital painting. Atmosphere: poetic, dreamy, nostalgic. Details: {details}. Color scheme: harmonious and natural.",
+    "emotion": "Create an emotional landscape that reflects the mood of Chinese poetry. Emotion: {emotion}. Style: artistic, impressionistic with Chinese aesthetic elements. Composition: balanced, flowing. Lighting: soft, atmospheric. Colors: muted tones with emotional depth.",
+    "default": "Generate a beautiful, artistic image inspired by Chinese poetry and traditional aesthetics. Style: modern digital art with traditional Chinese painting elements. Mood: serene, contemplative, poetic. Quality: high resolution, detailed, visually stunning."
+}
 
 # OpenAI client setup
 if api_base := os.environ.get("OPENAI_API_BASE"):
@@ -30,7 +64,20 @@ if api_base := os.environ.get("OPENAI_API_BASE"):
 else:
     client = OpenAI()
 
-KLING_COOKIE = os.environ.get("KLING_COOKIE")
+# OpenRouter API configuration
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+GEMINI_MODEL = "google/gemini-2.0-flash-exp:free"
+
+# OpenRouter client setup
+if OPENROUTER_API_KEY:
+    openrouter_client = OpenAI(
+        base_url=OPENROUTER_API_BASE,
+        api_key=OPENROUTER_API_KEY
+    )
+else:
+    openrouter_client = None
+    logger.warning("OPENROUTER_API_KEY not configured")
 
 def get_all_til_knowledge_file():
     til_dir = Path(os.environ.get("MORNING_REPO_NAME"))
@@ -47,13 +94,186 @@ def login(token):
 
 def get_one_sentence():
     try:
-        r = requests.get(SENTENCE_API)
+        r = requests.get(SENTENCE_API, timeout=10)
         if r.ok:
             return r.json()["content"]
+        logger.warning(f"API returned status {r.status_code}")
         return DEFAULT_SENTENCE
-    except:
-        print("get SENTENCE_API wrong")
+    except requests.RequestException as e:
+        logger.error(f"Failed to get sentence from API: {e}")
         return DEFAULT_SENTENCE
+    except Exception as e:
+        logger.error(f"Unexpected error getting sentence: {e}")
+        return DEFAULT_SENTENCE
+
+def analyze_poetry_theme(sentence: str) -> Tuple[str, dict]:
+    """
+    分析诗词主题，返回主题类型和相关参数
+    """
+    try:
+        analysis_prompt = f"""
+        分析以下中文诗词的主题和元素，返回JSON格式：
+        诗词：{sentence}
+        
+        请分析并返回以下信息：
+        1. theme: 主题类型 (nature/season/emotion/default)
+        2. elements: 主要元素列表
+        3. season: 季节 (如果是季节主题)
+        4. emotion: 情感 (如果是情感主题)
+        5. details: 具体细节描述
+        
+        只返回JSON，不要其他文字。
+        """
+        
+        completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": analysis_prompt}],
+            model="gpt-4o-mini",
+            temperature=0.3
+        )
+        
+        result = completion.choices[0].message.content.strip()
+        # 尝试解析JSON
+        import json
+        analysis = json.loads(result)
+        return analysis.get("theme", "default"), analysis
+        
+    except Exception as e:
+        logger.error(f"Failed to analyze poetry theme: {e}")
+        return "default", {"elements": ["mountain", "water", "sky"], "details": "serene landscape"}
+
+def generate_enhanced_prompt(sentence: str) -> str:
+    """
+    生成增强的图片提示词
+    """
+    try:
+        theme, analysis = analyze_poetry_theme(sentence)
+        template = POETRY_PROMPT_TEMPLATES.get(theme, POETRY_PROMPT_TEMPLATES["default"])
+        
+        # 根据主题填充模板
+        if theme == "nature":
+            elements = ", ".join(analysis.get("elements", ["mountain", "water", "trees"]))
+            return template.format(elements=elements)
+        elif theme == "season":
+            season = analysis.get("season", "spring")
+            details = analysis.get("details", "blooming flowers and gentle breeze")
+            return template.format(season=season, details=details)
+        elif theme == "emotion":
+            emotion = analysis.get("emotion", "peaceful")
+            return template.format(emotion=emotion)
+        else:
+            return template
+            
+    except Exception as e:
+        logger.error(f"Failed to generate enhanced prompt: {e}")
+        return POETRY_PROMPT_TEMPLATES["default"]
+
+def get_unsplash_image_by_theme(theme: str, analysis: dict) -> Optional[str]:
+    """
+    根据诗词主题从Unsplash API获取相关图片
+    """
+    if not UNSPLASH_ACCESS_KEY:
+        logger.warning("UNSPLASH_ACCESS_KEY not configured, using static fallback")
+        return None
+    
+    try:
+        # 根据主题选择关键词
+        keywords = POETRY_KEYWORDS_MAPPING.get(theme, POETRY_KEYWORDS_MAPPING["default"])
+        
+        # 根据分析结果调整关键词
+        if theme == "nature" and "elements" in analysis:
+            elements = analysis["elements"]
+            if isinstance(elements, list):
+                # 将中文元素转换为英文关键词
+                element_mapping = {
+                    "山": "mountain", "水": "water", "树": "tree", "花": "flower",
+                    "云": "cloud", "月": "moon", "日": "sun", "星": "star",
+                    "鸟": "bird", "鱼": "fish", "竹": "bamboo", "松": "pine"
+                }
+                for element in elements:
+                    if element in element_mapping:
+                        keywords.append(element_mapping[element])
+        
+        # 随机选择一个关键词进行搜索
+        search_keyword = random.choice(keywords)
+        
+        # 构建API请求
+        headers = {
+            "Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}",
+            "Accept-Version": "v1"
+        }
+        
+        params = {
+            "query": search_keyword,
+            "per_page": 10,
+            "orientation": "landscape",
+            "order_by": "relevant"
+        }
+        
+        logger.info(f"Searching Unsplash for keyword: {search_keyword}")
+        
+        response = requests.get(
+            UNSPLASH_SEARCH_ENDPOINT,
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            
+            if results:
+                # 随机选择一张图片
+                selected_image = random.choice(results)
+                image_url = selected_image["urls"]["regular"]
+                logger.info(f"Successfully fetched Unsplash image: {image_url}")
+                return image_url
+            else:
+                logger.warning(f"No images found for keyword: {search_keyword}")
+        else:
+            logger.error(f"Unsplash API error: {response.status_code} - {response.text}")
+            
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch from Unsplash API: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching Unsplash image: {e}")
+    
+    return None
+
+def get_fallback_image(theme: str = "default", analysis: dict = None) -> str:
+    """
+    获取备选图片 - 优先使用Unsplash API，失败时使用静态图片
+    """
+    # 尝试从Unsplash API获取图片
+    unsplash_image = get_unsplash_image_by_theme(theme, analysis or {})
+    
+    if unsplash_image:
+        return unsplash_image
+    
+    # 如果Unsplash API失败，使用静态备选图片
+    logger.info("Using static fallback image")
+    return random.choice(STATIC_FALLBACK_IMAGES)
+
+def get_year_progress():
+    """获取今年的进度条"""
+    now = pendulum.now(TIMEZONE)
+    day_of_year = now.day_of_year
+
+    # 判断是否为闰年
+    is_leap_year = now.year % 4 == 0 and (now.year % 100 != 0 or now.year % 400 == 0)
+    total_days = 366 if is_leap_year else 365
+
+    # 计算进度百分比
+    progress_percent = (day_of_year / total_days) * 100
+
+    # 生成进度条 (20个字符宽度)
+    progress_bar_width = 20
+    filled_blocks = int((day_of_year / total_days) * progress_bar_width)
+    empty_blocks = progress_bar_width - filled_blocks
+
+    progress_bar = "█" * filled_blocks + "░" * empty_blocks
+
+    return f"{progress_bar} {progress_percent:.1f}% ({day_of_year}/{total_days})"
 
 def get_today_get_up_status(issue):
     comments = list(issue.get_comments())
@@ -65,67 +285,150 @@ def get_today_get_up_status(issue):
     is_today = (latest_day.day == now.day) and (latest_day.month == now.month)
     return is_today
 
-def make_pic_and_save(sentence):
-    prompt = f"revise `{sentence}` to a stable diffusion prompt"
-    try:
-        completion = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="gpt-4o-2024-08-06",
-        )
-        sentence = completion.choices[0].message.content.encode("utf8").decode()
-        print(f"revies: {sentence}")
-    except:
-        print("revise sentence wrong")
+def generate_image_with_gemini(prompt: str) -> Optional[str]:
+    """
+    使用Gemini模型生成图片
+    """
+    if not openrouter_client:
+        logger.error("OpenRouter client not configured")
+        return None
     
+    try:
+        # 构建图片生成请求
+        image_prompt = f"""
+        Generate a beautiful, artistic image based on this description: {prompt}
+        
+        The image should be:
+        - High quality and visually appealing
+        - Suitable for a morning poetry sharing context
+        - Artistic and inspiring
+        - In landscape orientation
+        """
+        
+        logger.info(f"Generating image with Gemini for prompt: {prompt}")
+        
+        response = openrouter_client.images.generate(
+            model=GEMINI_MODEL,
+            prompt=image_prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1
+        )
+        
+        if response.data and len(response.data) > 0:
+            image_url = response.data[0].url
+            logger.info(f"Successfully generated image: {image_url}")
+            return image_url
+        else:
+            logger.warning("No image data returned from Gemini")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Failed to generate image with Gemini: {e}")
+        return None
+
+def make_pic_and_save(sentence: str) -> Optional[List[str]]:
+    """
+    生成并保存图片，使用Gemini模型替代Kling
+    """
+    logger.info(f"Starting image generation for sentence: {sentence}")
+    
+    # 生成增强的提示词
+    try:
+        enhanced_prompt = generate_enhanced_prompt(sentence)
+        logger.info(f"Generated enhanced prompt: {enhanced_prompt}")
+    except Exception as e:
+        logger.error(f"Failed to generate enhanced prompt: {e}")
+        enhanced_prompt = sentence  # 使用原始诗词作为备选
+    
+    # 创建输出目录
     now = pendulum.now()
     date_str = now.to_date_string()
     new_path = IMAGE_OUTPUT_DIR / date_str
     new_path.mkdir(parents=True, exist_ok=True)
     
-    i = ImageGen(KLING_COOKIE)
-    images_list = i.get_images(sentence)
-    return images_list
+    # 重试机制
+    for attempt in range(MAX_RETRY_ATTEMPTS):
+        try:
+            logger.info(f"Image generation attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS}")
+            
+            # 使用Gemini生成图片
+            image_url = generate_image_with_gemini(enhanced_prompt)
+            
+            if image_url:
+                logger.info(f"Successfully generated image on attempt {attempt + 1}")
+                return [image_url]
+            else:
+                logger.warning(f"Image generation returned no result (attempt {attempt + 1})")
+                
+        except Exception as e:
+            logger.error(f"Image generation failed on attempt {attempt + 1}: {e}")
+            
+            # 如果不是最后一次尝试，等待后重试
+            if attempt < MAX_RETRY_ATTEMPTS - 1:
+                delay = RETRY_DELAY_BASE * (2 ** attempt)  # 指数退避
+                logger.info(f"Waiting {delay} seconds before retry...")
+                time.sleep(delay)
+            else:
+                logger.error("All image generation attempts failed")
+    
+    return None
 
-def make_get_up_message():
-    images_list = []
+def make_get_up_message() -> Tuple[str, bool, List[str], str]:
+    """
+    生成早起消息，包含图片生成和备选方案
+    """
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
     is_get_up_early = 0 <= now.hour <= 24
+    images_list = []
+    theme = "default"
+    analysis = {}
     
+    logger.info(f"Generating wake-up message for sentence: {sentence}")
+    
+    # 获取年度进度
+    year_progress = get_year_progress()
+    logger.info(f"Year progress: {year_progress}")
+    
+    # 分析诗词主题（用于备选图片）
+    try:
+        theme, analysis = analyze_poetry_theme(sentence)
+        logger.info(f"Analyzed poetry theme: {theme}")
+    except Exception as e:
+        logger.error(f"Failed to analyze poetry theme: {e}")
+    
+    # 尝试生成图片
     try:
         images_list = make_pic_and_save(sentence)
-    except Exception as e:
-        print(str(e))
-        # give it a second chance
-        try:
+        
+        # 如果图片生成失败，尝试使用不同的诗词
+        if not images_list:
+            logger.warning("First attempt failed, trying with different sentence")
             sentence = get_one_sentence()
-            print(f"Second: {sentence}")
+            logger.info(f"Trying with new sentence: {sentence}")
+            
+            # 重新分析新诗词的主题
+            try:
+                theme, analysis = analyze_poetry_theme(sentence)
+            except Exception as e:
+                logger.error(f"Failed to analyze new poetry theme: {e}")
+            
             images_list = make_pic_and_save(sentence)
-        except Exception as e:
-            print(str(e))
+            
+    except Exception as e:
+        logger.error(f"Image generation failed completely: {e}")
+        images_list = []
     
-    return sentence, is_get_up_early, images_list
+    # 如果仍然没有图片，使用备选方案
+    if not images_list:
+        logger.info("Using fallback image")
+        fallback_image = get_fallback_image(theme, analysis)
+        images_list = [fallback_image]
+    
+    logger.info(f"Final result: {len(images_list)} images available")
+    return sentence, is_get_up_early, images_list, year_progress
 
-def get_yesterday_question():
-    # get yesterday's questions
-    with open("questions.txt") as f:
-        questions = f.read()
-        print(questions)
-    
-    completion = client.chat.completions.create(
-        messages=[
-            {"role": "user", "content": YESTERDAY_QUESTION.format(questions=questions)}
-        ],
-        model="gpt-4o-mini",
-    )
-    answer = completion.choices[0].message.content.encode("utf8").decode()
-    print(answer)
-    
-    # write the answer to a file
-    with open("questions.txt", "w") as f:
-        f.write(answer)
-    
-    return answer
 
 def main(
     github_token,
@@ -139,26 +442,33 @@ def main(
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
     is_today = get_today_get_up_status(issue)
     
-    yesterday_question = get_yesterday_question()
-    sentence, is_get_up_early, images_list = make_get_up_message()
+    sentence, is_get_up_early, images_list, year_progress = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
-    body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence)
+    body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence, year_progress=year_progress)
     early_message = body
     
     if weather_message:
         weather_message = f"现在的天气是{weather_message}°\n"
         body = weather_message + early_message
     
-    body = body + f"\n\n关于昨天的问题？\n{yesterday_question}"
     
     if is_get_up_early:
         # 安全地处理图片列表
         if images_list and len(images_list) > 0:
-            comment = body + f"![image]({images_list[0]})"
-            print(f"GitHub comment will include image: {images_list[0]}")
+            image_url = images_list[0]
+            comment = body + f"![image]({image_url})"
+            logger.info(f"GitHub comment will include image: {image_url}")
+            
+            # 检查是否是备选图片
+            if image_url in STATIC_FALLBACK_IMAGES or "unsplash.com" in image_url:
+                comment += "\n\n*使用备选图片*"
+                logger.info("Using fallback image for GitHub comment")
+            elif "gemini" in image_url.lower() or "google" in image_url.lower():
+                comment += "\n\n*AI生成图片*"
+                logger.info("Using AI generated image for GitHub comment")
         else:
             comment = body + "\n\n*今日暂无配图*"
-            print("Warning: No images generated, posting without image")
+            logger.warning("No images available, posting without image")
         
         # 发送 GitHub 评论
         try:
@@ -174,30 +484,42 @@ def main(
                 bot = telebot.TeleBot(tele_token)
                 
                 if images_list and len(images_list) > 0:
-                    print("Sending Telegram message with images")
+                    logger.info("Sending Telegram message with images")
                     try:
+                        # 检查图片类型
+                        is_fallback = any(img in STATIC_FALLBACK_IMAGES or "unsplash.com" in img for img in images_list)
+                        is_ai_generated = any("gemini" in img.lower() or "google" in img.lower() for img in images_list)
+                        
+                        caption = body
+                        if is_fallback:
+                            caption += "\n\n*使用备选图片*"
+                            logger.info("Using fallback images for Telegram")
+                        elif is_ai_generated:
+                            caption += "\n\n*AI生成图片*"
+                            logger.info("Using AI generated images for Telegram")
+                        
                         photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
-                        photos_list[0].caption = body
+                        photos_list[0].caption = caption
                         result = bot.send_media_group(
                             tele_chat_id, photos_list, disable_notification=True
                         )
-                        print(f"Telegram media group sent successfully")
+                        logger.info("Telegram media group sent successfully")
                     except Exception as e:
-                        print(f"Error sending photos to Telegram: {str(e)}")
+                        logger.error(f"Error sending photos to Telegram: {str(e)}")
                         # 如果发送图片失败，发送纯文本消息
                         try:
                             result = bot.send_message(tele_chat_id, body, disable_notification=True)
-                            print(f"Telegram text message sent successfully as fallback")
+                            logger.info("Telegram text message sent successfully as fallback")
                         except Exception as text_error:
-                            print(f"Error sending text message to Telegram: {str(text_error)}")
+                            logger.error(f"Error sending text message to Telegram: {str(text_error)}")
                 else:
                     # 如果没有图片，只发送文本消息
-                    print("Sending Telegram text message only")
+                    logger.info("Sending Telegram text message only")
                     try:
                         result = bot.send_message(tele_chat_id, body, disable_notification=True)
-                        print(f"Telegram text message sent successfully")
+                        logger.info("Telegram text message sent successfully")
                     except Exception as e:
-                        print(f"Error sending text message to Telegram: {str(e)}")
+                        logger.error(f"Error sending text message to Telegram: {str(e)}")
                         
             except Exception as bot_error:
                 print(f"Error initializing Telegram bot: {str(bot_error)}")
