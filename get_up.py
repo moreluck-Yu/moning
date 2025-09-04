@@ -64,20 +64,20 @@ if api_base := os.environ.get("OPENAI_API_BASE"):
 else:
     client = OpenAI()
 
-# OpenRouter API configuration
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
-GEMINI_MODEL = "google/gemini-2.0-flash-exp:free"
+# FastGPT API configuration
+FASTGPT_API_KEY = os.environ.get("FASTGPT_API_KEY", "fastgpt-xwRC0Ea1FFFFGR0xJZjhz0zTyGXuwJdbzhDt31igWvyYsLkWf1qZzhjXICt5")
+FASTGPT_API_BASE = "https://api.fastgpt.in/api/v1"
+FASTGPT_MODEL = "FLUX.1 DEV"  # 使用FLUX.1 DEV模型生成图片
 
-# OpenRouter client setup
-if OPENROUTER_API_KEY:
-    openrouter_client = OpenAI(
-        base_url=OPENROUTER_API_BASE,
-        api_key=OPENROUTER_API_KEY
+# FastGPT client setup
+if FASTGPT_API_KEY:
+    fastgpt_client = OpenAI(
+        base_url=FASTGPT_API_BASE,
+        api_key=FASTGPT_API_KEY
     )
 else:
-    openrouter_client = None
-    logger.warning("OPENROUTER_API_KEY not configured")
+    fastgpt_client = None
+    logger.warning("FASTGPT_API_KEY not configured")
 
 def get_all_til_knowledge_file():
     til_dir = Path(os.environ.get("MORNING_REPO_NAME"))
@@ -285,30 +285,31 @@ def get_today_get_up_status(issue):
     is_today = (latest_day.day == now.day) and (latest_day.month == now.month)
     return is_today
 
-def generate_image_with_gemini(prompt: str) -> Optional[str]:
+def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
     """
-    使用Gemini模型生成图片
+    使用FastGPT API和FLUX.1 DEV模型直接生成AI图片
     """
-    if not openrouter_client:
-        logger.error("OpenRouter client not configured")
+    if not fastgpt_client:
+        logger.error("FastGPT client not configured")
         return None
     
     try:
         # 构建图片生成请求
         image_prompt = f"""
-        Generate a beautiful, artistic image based on this description: {prompt}
+        Generate a beautiful, artistic image based on this Chinese poetry description: {prompt}
         
         The image should be:
         - High quality and visually appealing
         - Suitable for a morning poetry sharing context
         - Artistic and inspiring
         - In landscape orientation
+        - Reflect the mood and theme of the poetry
         """
         
-        logger.info(f"Generating image with Gemini for prompt: {prompt}")
+        logger.info(f"Generating image with FastGPT FLUX.1 DEV for prompt: {prompt}")
         
-        response = openrouter_client.images.generate(
-            model=GEMINI_MODEL,
+        response = fastgpt_client.images.generate(
+            model=FASTGPT_MODEL,
             prompt=image_prompt,
             size="1024x1024",
             quality="standard",
@@ -317,19 +318,75 @@ def generate_image_with_gemini(prompt: str) -> Optional[str]:
         
         if response.data and len(response.data) > 0:
             image_url = response.data[0].url
-            logger.info(f"Successfully generated image: {image_url}")
+            logger.info(f"Successfully generated image with FastGPT: {image_url}")
             return image_url
         else:
-            logger.warning("No image data returned from Gemini")
+            logger.warning("No image data returned from FastGPT")
             return None
             
     except Exception as e:
-        logger.error(f"Failed to generate image with Gemini: {e}")
+        logger.error(f"Failed to generate image with FastGPT: {e}")
         return None
+
+def get_unsplash_image_by_keywords(keywords: List[str]) -> Optional[str]:
+    """
+    根据关键词从Unsplash获取图片
+    """
+    if not UNSPLASH_ACCESS_KEY:
+        logger.warning("UNSPLASH_ACCESS_KEY not configured")
+        return None
+    
+    try:
+        # 随机选择一个关键词进行搜索
+        search_keyword = random.choice(keywords)
+        
+        # 构建API请求
+        headers = {
+            "Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}",
+            "Accept-Version": "v1"
+        }
+        
+        params = {
+            "query": search_keyword,
+            "per_page": 10,
+            "orientation": "landscape",
+            "order_by": "relevant"
+        }
+        
+        logger.info(f"Searching Unsplash for keyword: {search_keyword}")
+        
+        response = requests.get(
+            UNSPLASH_SEARCH_ENDPOINT,
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            
+            if results:
+                # 随机选择一张图片
+                selected_image = random.choice(results)
+                image_url = selected_image["urls"]["regular"]
+                logger.info(f"Successfully fetched Unsplash image: {image_url}")
+                return image_url
+            else:
+                logger.warning(f"No images found for keyword: {search_keyword}")
+        else:
+            logger.error(f"Unsplash API error: {response.status_code} - {response.text}")
+            
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch from Unsplash API: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching Unsplash image: {e}")
+    
+    return None
 
 def make_pic_and_save(sentence: str) -> Optional[List[str]]:
     """
-    生成并保存图片，使用Gemini模型替代Kling
+    生成并保存图片，使用FastGPT FLUX.1 DEV模型直接生成AI图片
     """
     logger.info(f"Starting image generation for sentence: {sentence}")
     
@@ -352,8 +409,8 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
         try:
             logger.info(f"Image generation attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS}")
             
-            # 使用Gemini生成图片
-            image_url = generate_image_with_gemini(enhanced_prompt)
+            # 使用FastGPT FLUX.1 DEV模型直接生成AI图片
+            image_url = generate_image_with_fastgpt(enhanced_prompt)
             
             if image_url:
                 logger.info(f"Successfully generated image on attempt {attempt + 1}")
@@ -459,11 +516,11 @@ def main(
             comment = body + f"![image]({image_url})"
             logger.info(f"GitHub comment will include image: {image_url}")
             
-            # 检查是否是备选图片
-            if image_url in STATIC_FALLBACK_IMAGES or "unsplash.com" in image_url:
+            # 检查图片类型
+            if image_url in STATIC_FALLBACK_IMAGES:
                 comment += "\n\n*使用备选图片*"
-                logger.info("Using fallback image for GitHub comment")
-            elif "gemini" in image_url.lower() or "google" in image_url.lower():
+                logger.info("Using static fallback image for GitHub comment")
+            elif "fastgpt" in image_url.lower() or "flux" in image_url.lower():
                 comment += "\n\n*AI生成图片*"
                 logger.info("Using AI generated image for GitHub comment")
         else:
@@ -487,14 +544,14 @@ def main(
                     logger.info("Sending Telegram message with images")
                     try:
                         # 检查图片类型
-                        is_fallback = any(img in STATIC_FALLBACK_IMAGES or "unsplash.com" in img for img in images_list)
-                        is_ai_generated = any("gemini" in img.lower() or "google" in img.lower() for img in images_list)
+                        is_static_fallback = any(img in STATIC_FALLBACK_IMAGES for img in images_list)
+                        is_ai_matched = any("fastgpt" in img.lower() or "flux" in img.lower() for img in images_list)
                         
                         caption = body
-                        if is_fallback:
+                        if is_static_fallback:
                             caption += "\n\n*使用备选图片*"
-                            logger.info("Using fallback images for Telegram")
-                        elif is_ai_generated:
+                            logger.info("Using static fallback images for Telegram")
+                        elif is_ai_matched:
                             caption += "\n\n*AI生成图片*"
                             logger.info("Using AI generated images for Telegram")
                         
