@@ -397,7 +397,7 @@ def get_unsplash_image_by_keywords(keywords: List[str]) -> Optional[str]:
     
     return None
 
-def download_image_to_local(image_url: str, filename: str = None) -> Optional[str]:
+def download_image_to_local(image_url: str, filename: str = None, output_dir: Path = None) -> Optional[str]:
     """
     下载远程图片到本地，返回本地文件路径
     """
@@ -409,11 +409,12 @@ def download_image_to_local(image_url: str, filename: str = None) -> Optional[st
             if not filename or '.' not in filename:
                 filename = f"image_{int(time.time())}.jpg"
         
-        # 确保输出目录存在
-        IMAGE_OUTPUT_DIR.mkdir(exist_ok=True)
+        # 使用指定的输出目录，如果没有指定则使用默认目录
+        target_dir = output_dir if output_dir else IMAGE_OUTPUT_DIR
+        target_dir.mkdir(parents=True, exist_ok=True)
         
         # 构建本地文件路径
-        local_path = IMAGE_OUTPUT_DIR / filename
+        local_path = target_dir / filename
         
         logger.info(f"Downloading image from {image_url} to {local_path}")
         
@@ -515,8 +516,8 @@ def make_pic_and_save(sentence: str) -> Optional[Tuple[List[str], List[str]]]:
             else:
                 filename = f"static_{int(time.time())}_{i}.jpg"
             
-            # 下载图片到本地
-            local_path = download_image_to_local(image_url, filename)
+            # 下载图片到本地，使用日期子目录
+            local_path = download_image_to_local(image_url, filename, new_path)
             if local_path:
                 images_list.append(local_path)
                 logger.info(f"Successfully downloaded image {i+1}: {local_path}")
@@ -655,6 +656,9 @@ def main(
                 
                 if local_images_list and len(local_images_list) > 0:
                     logger.info(f"Sending Telegram message with {len(local_images_list)} images")
+                    logger.info(f"Local images list: {local_images_list}")
+                    for i, img_path in enumerate(local_images_list):
+                        logger.info(f"Image {i+1}: {img_path} (exists: {os.path.exists(img_path)})")
                     try:
                         # 分析图片类型（基于本地文件名）
                         has_fastgpt = any("fastgpt" in img.lower() for img in local_images_list)
