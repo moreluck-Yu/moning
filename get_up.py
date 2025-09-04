@@ -323,7 +323,7 @@ def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
             
             # 尝试从响应中提取图片URL
             import re
-            url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+\.(?:jpg|jpeg|png|gif|webp)'
+            url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"{}|\\^`\[\]]*)?'
             urls = re.findall(url_pattern, response_text)
             
             if urls:
@@ -426,7 +426,7 @@ def download_image_to_local(image_url: str, filename: str = None) -> Optional[st
             f.write(response.content)
         
         logger.info(f"Successfully downloaded image to {local_path}")
-        return str(local_path)
+        return str(local_path.absolute())
         
     except Exception as e:
         logger.error(f"Failed to download image from {image_url}: {e}")
