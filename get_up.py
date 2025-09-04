@@ -5,6 +5,7 @@ import random
 import logging
 import time
 from typing import List, Optional, Tuple
+import urllib.parse
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -396,9 +397,45 @@ def get_unsplash_image_by_keywords(keywords: List[str]) -> Optional[str]:
     
     return None
 
-def make_pic_and_save(sentence: str) -> Optional[List[str]]:
+def download_image_to_local(image_url: str, filename: str = None) -> Optional[str]:
+    """
+    下载远程图片到本地，返回本地文件路径
+    """
+    try:
+        # 如果没有指定文件名，从URL中提取
+        if not filename:
+            parsed_url = urllib.parse.urlparse(image_url)
+            filename = os.path.basename(parsed_url.path)
+            if not filename or '.' not in filename:
+                filename = f"image_{int(time.time())}.jpg"
+        
+        # 确保输出目录存在
+        IMAGE_OUTPUT_DIR.mkdir(exist_ok=True)
+        
+        # 构建本地文件路径
+        local_path = IMAGE_OUTPUT_DIR / filename
+        
+        logger.info(f"Downloading image from {image_url} to {local_path}")
+        
+        # 下载图片
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+        
+        # 保存到本地
+        with open(local_path, 'wb') as f:
+            f.write(response.content)
+        
+        logger.info(f"Successfully downloaded image to {local_path}")
+        return str(local_path)
+        
+    except Exception as e:
+        logger.error(f"Failed to download image from {image_url}: {e}")
+        return None
+
+def make_pic_and_save(sentence: str) -> Optional[Tuple[List[str], List[str]]]:
     """
     生成并保存图片，同时获取FastGPT AI图片和Unsplash备选图片
+    返回 (本地文件路径列表, 原始URL列表) 的元组
     """
     logger.info(f"Starting dual image generation for sentence: {sentence}")
     
@@ -417,19 +454,20 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
     new_path.mkdir(parents=True, exist_ok=True)
     
     images_list = []
+    image_urls = []
     
     # 1. 尝试生成FastGPT AI图片
-    fastgpt_image = None
+    fastgpt_image_url = None
     for attempt in range(MAX_RETRY_ATTEMPTS):
         try:
             logger.info(f"FastGPT image generation attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS}")
             
             # 使用FastGPT FLUX.1 DEV模型直接生成AI图片
-            fastgpt_image = generate_image_with_fastgpt(enhanced_prompt)
+            fastgpt_image_url = generate_image_with_fastgpt(enhanced_prompt)
             
-            if fastgpt_image:
+            if fastgpt_image_url:
                 logger.info(f"Successfully generated FastGPT image on attempt {attempt + 1}")
-                images_list.append(fastgpt_image)
+                image_urls.append(fastgpt_image_url)
                 break
             else:
                 logger.warning(f"FastGPT image generation returned no result (attempt {attempt + 1})")
@@ -449,11 +487,11 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
     try:
         logger.info("Getting Unsplash fallback image")
         theme, analysis = analyze_poetry_theme(sentence)
-        unsplash_image = get_fallback_image(theme, analysis)
+        unsplash_image_url = get_fallback_image(theme, analysis)
         
-        if unsplash_image and unsplash_image not in images_list:
+        if unsplash_image_url and unsplash_image_url not in image_urls:
             logger.info("Successfully got Unsplash fallback image")
-            images_list.append(unsplash_image)
+            image_urls.append(unsplash_image_url)
         else:
             logger.warning("Failed to get Unsplash fallback image or duplicate")
             
@@ -461,22 +499,45 @@ def make_pic_and_save(sentence: str) -> Optional[List[str]]:
         logger.error(f"Failed to get Unsplash fallback image: {e}")
     
     # 3. 如果都没有，使用静态备选图片
-    if not images_list:
+    if not image_urls:
         logger.info("Using static fallback images")
-        static_image = random.choice(STATIC_FALLBACK_IMAGES)
-        images_list.append(static_image)
+        static_image_url = random.choice(STATIC_FALLBACK_IMAGES)
+        image_urls.append(static_image_url)
     
-    logger.info(f"Final result: {len(images_list)} images available")
-    return images_list if images_list else None
+    # 4. 下载所有图片到本地
+    for i, image_url in enumerate(image_urls):
+        try:
+            # 生成文件名
+            if "fastgpt" in image_url.lower() or "flux" in image_url.lower():
+                filename = f"fastgpt_{int(time.time())}_{i}.jpg"
+            elif "unsplash.com" in image_url.lower():
+                filename = f"unsplash_{int(time.time())}_{i}.jpg"
+            else:
+                filename = f"static_{int(time.time())}_{i}.jpg"
+            
+            # 下载图片到本地
+            local_path = download_image_to_local(image_url, filename)
+            if local_path:
+                images_list.append(local_path)
+                logger.info(f"Successfully downloaded image {i+1}: {local_path}")
+            else:
+                logger.error(f"Failed to download image {i+1}: {image_url}")
+                
+        except Exception as e:
+            logger.error(f"Error downloading image {i+1}: {e}")
+    
+    logger.info(f"Final result: {len(images_list)} local images available")
+    return (images_list, image_urls) if images_list else None
 
-def make_get_up_message() -> Tuple[str, bool, List[str], str]:
+def make_get_up_message() -> Tuple[str, bool, List[str], List[str], str]:
     """
     生成早起消息，包含图片生成和备选方案
     """
     sentence = get_one_sentence()
     now = pendulum.now(TIMEZONE)
     is_get_up_early = 0 <= now.hour <= 24
-    images_list = []
+    local_images_list = []
+    image_urls_list = []
     theme = "default"
     analysis = {}
     
@@ -495,10 +556,10 @@ def make_get_up_message() -> Tuple[str, bool, List[str], str]:
     
     # 尝试生成图片
     try:
-        images_list = make_pic_and_save(sentence)
+        result = make_pic_and_save(sentence)
         
         # 如果图片生成失败，尝试使用不同的诗词
-        if not images_list:
+        if not result:
             logger.warning("First attempt failed, trying with different sentence")
             sentence = get_one_sentence()
             logger.info(f"Trying with new sentence: {sentence}")
@@ -509,20 +570,31 @@ def make_get_up_message() -> Tuple[str, bool, List[str], str]:
             except Exception as e:
                 logger.error(f"Failed to analyze new poetry theme: {e}")
             
-            images_list = make_pic_and_save(sentence)
+            result = make_pic_and_save(sentence)
             
+        # 处理返回结果
+        if result:
+            local_images_list, image_urls_list = result
+        else:
+            local_images_list, image_urls_list = [], []
+
     except Exception as e:
         logger.error(f"Image generation failed completely: {e}")
-        images_list = []
+        local_images_list, image_urls_list = [], []
     
     # 如果仍然没有图片，使用备选方案
-    if not images_list:
+    if not local_images_list:
         logger.info("Using fallback image")
         fallback_image = get_fallback_image(theme, analysis)
-        images_list = [fallback_image]
+        if fallback_image:
+            # 下载备选图片到本地
+            local_path = download_image_to_local(fallback_image, f"fallback_{int(time.time())}.jpg")
+            if local_path:
+                local_images_list = [local_path]
+                image_urls_list = [fallback_image]
     
-    logger.info(f"Final result: {len(images_list)} images available")
-    return sentence, is_get_up_early, images_list, year_progress
+    logger.info(f"Final result: {len(local_images_list)} local images, {len(image_urls_list)} URLs available")
+    return sentence, is_get_up_early, local_images_list, image_urls_list, year_progress
 
 
 def main(
@@ -537,7 +609,7 @@ def main(
     issue = repo.get_issue(GET_UP_ISSUE_NUMBER)
     is_today = get_today_get_up_status(issue)
     
-    sentence, is_get_up_early, images_list, year_progress = make_get_up_message()
+    sentence, is_get_up_early, local_images_list, image_urls_list, year_progress = make_get_up_message()
     get_up_time = pendulum.now(TIMEZONE).to_datetime_string()
     body = GET_UP_MESSAGE_TEMPLATE.format(get_up_time=get_up_time, sentence=sentence, year_progress=year_progress)
     early_message = body
@@ -549,8 +621,8 @@ def main(
     
     if is_get_up_early:
         # GitHub评论只显示第一张图片（通常是FastGPT生成的）
-        if images_list and len(images_list) > 0:
-            image_url = images_list[0]
+        if image_urls_list and len(image_urls_list) > 0:
+            image_url = image_urls_list[0]
             comment = body + f"![image]({image_url})"
             logger.info(f"GitHub comment will include image: {image_url}")
             
@@ -581,13 +653,13 @@ def main(
             try:
                 bot = telebot.TeleBot(tele_token)
                 
-                if images_list and len(images_list) > 0:
-                    logger.info(f"Sending Telegram message with {len(images_list)} images")
+                if local_images_list and len(local_images_list) > 0:
+                    logger.info(f"Sending Telegram message with {len(local_images_list)} images")
                     try:
-                        # 分析图片类型
-                        has_fastgpt = any("fastgpt" in img.lower() or "flux" in img.lower() for img in images_list)
-                        has_unsplash = any("unsplash.com" in img.lower() for img in images_list)
-                        has_static = any(img in STATIC_FALLBACK_IMAGES for img in images_list)
+                        # 分析图片类型（基于本地文件名）
+                        has_fastgpt = any("fastgpt" in img.lower() for img in local_images_list)
+                        has_unsplash = any("unsplash" in img.lower() for img in local_images_list)
+                        has_static = any("static" in img.lower() for img in local_images_list)
                         
                         # 构建图片类型说明
                         image_types = []
@@ -604,7 +676,7 @@ def main(
                             logger.info(f"Telegram images types: {', '.join(image_types)}")
                         
                         # 发送最多4张图片
-                        photos_list = [InputMediaPhoto(i) for i in images_list[:4]]
+                        photos_list = [InputMediaPhoto(i) for i in local_images_list[:4]]
                         photos_list[0].caption = caption
                         result = bot.send_media_group(
                             tele_chat_id, photos_list, disable_notification=True
