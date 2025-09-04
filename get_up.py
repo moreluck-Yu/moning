@@ -308,20 +308,32 @@ def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
         
         logger.info(f"Generating image with FastGPT FLUX.1 DEV for prompt: {prompt}")
         
-        response = fastgpt_client.images.generate(
+        response = fastgpt_client.chat.completions.create(
             model=FASTGPT_MODEL,
-            prompt=image_prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1
+            messages=[{"role": "user", "content": image_prompt}],
+            temperature=0.7,
+            max_tokens=1000
         )
         
-        if response.data and len(response.data) > 0:
-            image_url = response.data[0].url
-            logger.info(f"Successfully generated image with FastGPT: {image_url}")
-            return image_url
+        if response.choices and len(response.choices) > 0:
+            # FastGPT返回的是文本响应，包含图片URL
+            response_text = response.choices[0].message.content
+            logger.info(f"FastGPT response: {response_text}")
+            
+            # 尝试从响应中提取图片URL
+            import re
+            url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+\.(?:jpg|jpeg|png|gif|webp)'
+            urls = re.findall(url_pattern, response_text)
+            
+            if urls:
+                image_url = urls[0]
+                logger.info(f"Successfully extracted image URL: {image_url}")
+                return image_url
+            else:
+                logger.warning("No image URL found in FastGPT response")
+                return None
         else:
-            logger.warning("No image data returned from FastGPT")
+            logger.warning("No response data returned from FastGPT")
             return None
             
     except Exception as e:
