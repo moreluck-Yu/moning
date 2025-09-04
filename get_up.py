@@ -323,8 +323,7 @@ def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
             
             # 尝试从响应中提取图片URL
             import re
-            url_pattern = r'https?://[^\s
-            <>"{}|\\^`\[\]]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"{}|\\^`\[\]]*)?'
+            url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"{}|\\^`\[\]]*)?'
             urls = re.findall(url_pattern, response_text)
             
             if urls:
