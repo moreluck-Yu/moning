@@ -133,6 +133,13 @@ def analyze_poetry_theme(sentence: str) -> Tuple[str, dict]:
         )
         
         result = completion.choices[0].message.content.strip()
+        # 检查并移除Markdown代码块
+        if result.startswith("```json"):
+            result = result[7:]
+        if result.endswith("```"):
+            result = result[:-3]
+        result = result.strip()
+
         # 尝试解析JSON
         import json
         analysis = json.loads(result)
@@ -523,7 +530,7 @@ def make_pic_and_save(sentence: str) -> Optional[Tuple[List[str], List[str]]]:
     for i, image_url in enumerate(image_urls):
         try:
             # 生成文件名
-            if "fastgpt" in image_url.lower() or "flux" in image_url.lower():
+            if "fastgpt" in image_url.lower() or "flux" in image_url.lower() or "aliyuncs.com" in image_url.lower():
                 filename = f"fastgpt_{int(time.time())}_{i}.jpg"
             elif "unsplash.com" in image_url.lower():
                 filename = f"unsplash_{int(time.time())}_{i}.jpg"
