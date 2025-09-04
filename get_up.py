@@ -328,8 +328,15 @@ def generate_image_with_fastgpt(prompt: str) -> Optional[str]:
             
             if urls:
                 image_url = urls[0]
-                logger.info(f"Successfully extracted image URL: {image_url}")
-                return image_url
+                # 确保URL正确编码
+                import urllib.parse
+                parsed_url = urllib.parse.urlparse(image_url)
+                if parsed_url.scheme and parsed_url.netloc:
+                    logger.info(f"Successfully extracted image URL: {image_url}")
+                    return image_url
+                else:
+                    logger.warning(f"Invalid URL extracted: {image_url}")
+                    return None
             else:
                 logger.warning("No image URL found in FastGPT response")
                 return None
@@ -418,8 +425,11 @@ def download_image_to_local(image_url: str, filename: str = None, output_dir: Pa
         
         logger.info(f"Downloading image from {image_url} to {local_path}")
         
-        # 下载图片
-        response = requests.get(image_url, timeout=30)
+        # 下载图片，添加User-Agent和更好的错误处理
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(image_url, headers=headers, timeout=30, allow_redirects=True)
         response.raise_for_status()
         
         # 保存到本地
@@ -680,11 +690,22 @@ def main(
                             logger.info(f"Telegram images types: {', '.join(image_types)}")
                         
                         # 发送最多4张图片
-                        photos_list = [InputMediaPhoto(i) for i in local_images_list[:4]]
-                        photos_list[0].caption = caption
-                        result = bot.send_media_group(
-                            tele_chat_id, photos_list, disable_notification=True
-                        )
+                        photos_list = []
+                        for i, img_path in enumerate(local_images_list[:4]):
+                            try:
+                                with open(img_path, 'rb') as photo_file:
+                                    if i == 0:
+                                        photos_list.append(InputMediaPhoto(photo_file, caption=caption))
+                                    else:
+                                        photos_list.append(InputMediaPhoto(photo_file))
+                            except Exception as file_error:
+                                logger.error(f"Error opening image file {img_path}: {file_error}")
+                                continue
+                        
+                        if photos_list:
+                            result = bot.send_media_group(
+                                tele_chat_id, photos_list, disable_notification=True
+                            )
                         logger.info(f"Telegram media group sent successfully with {len(photos_list)} images")
                     except Exception as e:
                         logger.error(f"Error sending photos to Telegram: {str(e)}")
