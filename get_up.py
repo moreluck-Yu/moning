@@ -693,11 +693,10 @@ def main(
                         photos_list = []
                         for i, img_path in enumerate(local_images_list[:4]):
                             try:
-                                with open(img_path, 'rb') as photo_file:
-                                    if i == 0:
-                                        photos_list.append(InputMediaPhoto(photo_file, caption=caption))
-                                    else:
-                                        photos_list.append(InputMediaPhoto(photo_file))
+                                if i == 0:
+                                    photos_list.append(InputMediaPhoto(open(img_path, 'rb'), caption=caption))
+                                else:
+                                    photos_list.append(InputMediaPhoto(open(img_path, 'rb')))
                             except Exception as file_error:
                                 logger.error(f"Error opening image file {img_path}: {file_error}")
                                 continue
@@ -706,6 +705,12 @@ def main(
                             result = bot.send_media_group(
                                 tele_chat_id, photos_list, disable_notification=True
                             )
+                            # Close the file objects after sending
+                            for media in photos_list:
+                                try:
+                                    media.media.close()
+                                except:
+                                    pass
                         logger.info(f"Telegram media group sent successfully with {len(photos_list)} images")
                     except Exception as e:
                         logger.error(f"Error sending photos to Telegram: {str(e)}")
