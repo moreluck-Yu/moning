@@ -66,7 +66,7 @@ else:
 
 # FastGPT API configuration
 FASTGPT_API_KEY = os.environ.get("FASTGPT_API_KEY", "fastgpt-xwRC0Ea1FFFFGR0xJZjhz0zTyGXuwJdbzhDt31igWvyYsLkWf1qZzhjXICt5")
-FASTGPT_API_BASE = "https://api.fastgpt.in/api"
+FASTGPT_API_BASE = "https://api.fastgpt.in/api/v1"
 FASTGPT_MODEL = "FLUX.1 DEV"  # 使用FLUX.1 DEV模型生成图片
 
 # FastGPT client setup
