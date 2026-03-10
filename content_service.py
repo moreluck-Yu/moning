@@ -64,19 +64,18 @@ class GeminiImagenGenerator(ContentGenerator):
     def __init__(self, config: MoningConfig):
         super().__init__(config)
         self.client = None
-        if config.gemini_imagen.api_key:
+            if config.gemini_imagen.api_key:
             self.client = OpenAI(
                 api_key=config.gemini_imagen.api_key,
-                base_url=config.gemini_imagen.base_url
-            )
-
-    def is_available(self) -> bool:
-        return self.client is not None and self.config.gemini_imagen.api_key is not None
-
-    def generate(self, request: ContentRequest) -> Optional[GeneratedContent]:
-        if not self.is_available():
-            logger.warning("Gemini Imagen generator not available")
-            return None
+                base_url=config.gemini_imagen.base_url,
+                timeout=60.0,  # 增加超时时间
+                max_retries=3,  # 增加重试次数
+                default_headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; Moning/1.0)",
+                    "Accept": "application/json",
+                    "Accept-Language": "en-US,en;q=0.9"
+                    }
+                )
 
         try:
             # 分析诗词主题
