@@ -1,0 +1,18 @@
+{"name": "content_generation_total", "value": 1.0, "timestamp": 1773138537.4913611, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "counter"}
+{"name": "content_generation_duration", "value": 0, "timestamp": 1773138537.4913821, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "histogram"}
+{"name": "content_generation_success_total", "value": 1.0, "timestamp": 1773138537.491391, "labels": {"generator": "overall"}, "type": "counter"}
+{"name": "daily_checkin_total", "value": 1.0, "timestamp": 1773138537.4929159, "labels": {"status": "success"}, "type": "counter"}
+{"name": "moning_app_duration", "value": 0.8736040592193604, "timestamp": 1773138537.4929368, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "histogram"}
+{"name": "moning_app_operations_total", "value": 1.0, "timestamp": 1773138537.492943, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "counter"}
+{"name": "content_generation_total", "value": 1.0, "timestamp": 1773138842.636147, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "counter"}
+{"name": "content_generation_duration", "value": 0, "timestamp": 1773138842.636207, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "histogram"}
+{"name": "content_generation_success_total", "value": 1.0, "timestamp": 1773138842.636221, "labels": {"generator": "overall"}, "type": "counter"}
+{"name": "daily_checkin_total", "value": 1.0, "timestamp": 1773138842.637723, "labels": {"status": "success"}, "type": "counter"}
+{"name": "moning_app_duration", "value": 1.2654619216918945, "timestamp": 1773138842.6377752, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "histogram"}
+{"name": "moning_app_operations_total", "value": 1.0, "timestamp": 1773138842.637784, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "counter"}
+{"name": "content_generation_total", "value": 1.0, "timestamp": 1773139478.0286741, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "counter"}
+{"name": "content_generation_duration", "value": 0, "timestamp": 1773139478.0287411, "labels": {"generator": "overall", "source": "static_fallback", "status": "success"}, "type": "histogram"}
+{"name": "content_generation_success_total", "value": 1.0, "timestamp": 1773139478.028756, "labels": {"generator": "overall"}, "type": "counter"}
+{"name": "daily_checkin_total", "value": 1.0, "timestamp": 1773139478.029948, "labels": {"status": "success"}, "type": "counter"}
+{"name": "moning_app_duration", "value": 14.438300848007202, "timestamp": 1773139478.029985, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "histogram"}
+{"name": "moning_app_operations_total", "value": 1.0, "timestamp": 1773139478.029993, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "counter"}
