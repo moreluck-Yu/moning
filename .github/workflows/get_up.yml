@@ -12,11 +12,12 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
-  GROK_API_BASE: ${{ secrets.GROK_API_BASE }}
-  GROK_IMAGE_MODEL: ${{ secrets.GROK_IMAGE_MODEL }}
+  GEMINI_IMAGEN_API_KEY: ${{ secrets.GEMINI_IMAGEN_API_KEY }}
+  GEMINI_IMAGEN_API_BASE: ${{ secrets.GEMINI_IMAGEN_API_BASE }}
+  GEMINI_IMAGEN_MODEL: ${{ secrets.GEMINI_IMAGEN_MODEL }}
   UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
-  OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_REPO: ${{ github.repository }}
 
 jobs:
   sync:
@@ -25,7 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
 
       - name: install python 3.10
         uses: actions/setup-python@v5
@@ -38,13 +38,13 @@ jobs:
 
       - name: GET UP
         run: |
-          python get_up.py ${{ secrets.G_T }} ${{ github.repository }}  --weather_message ": ${{ github.event.inputs.message }}" --tele_token ${{ secrets.TG_TOKEN }} --tele_chat_id ${{ secrets.TG_CHAT_ID }}
+          python moning_main.py --github-token ${{ secrets.G_T }} --repo-name ${{ github.repository }} --weather ": ${{ github.event.inputs.message }}" --telegram-token ${{ secrets.TG_TOKEN }} --telegram-chat-id ${{ secrets.TG_CHAT_ID }}
 
       - name: Push New Pic
         run: |
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
-            git add OUT_DIR/* knowledge.txt
+            git add OUT_DIR/* || echo "No new images to add"
             git commit -m "generated today pic" || echo "No changes to commit"
             git pull --rebase origin main
             git push origin main
