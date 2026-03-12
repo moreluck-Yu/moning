@@ -208,12 +208,20 @@ class TelegramPublisher(Publisher):
                     )
             elif content.image_url:
                 # 使用图片 URL
-                message = self.bot.send_photo(
-                    chat_id=self.config.telegram.chat_id,
-                    photo=content.image_url,
-                    caption=content.text,
-                    parse_mode='Markdown'
-                )
+                try:
+                    message = self.bot.send_photo(
+                        chat_id=self.config.telegram.chat_id,
+                        photo=content.image_url,
+                        caption=content.text,
+                        parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    logger.warning(f"Telegram send_photo failed, fallback to text-only: {e}")
+                    message = self.bot.send_message(
+                        chat_id=self.config.telegram.chat_id,
+                        text=content.text,
+                        parse_mode='Markdown'
+                    )
             else:
                 # 只发送文字
                 message = self.bot.send_message(

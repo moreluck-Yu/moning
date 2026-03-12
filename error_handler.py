@@ -297,6 +297,7 @@ class ErrorHandler:
     def _log_error(self, error: MoningException):
         """记录错误日志"""
         log_data = error.to_dict()
+        log_data.pop("message", None)
 
         if error.severity == ErrorSeverity.CRITICAL:
             logger.critical(f"Critical error in {error.context.component}: {error.message}", extra=log_data)
