@@ -371,7 +371,11 @@ class PublishingService:
 
                     # GitHub 成功后，尝试使用 camo 代理 URL 供后续平台使用
                     if platform_name == "github" and content.image_url and result.url:
-                        camo_url = self._extract_camo_url(result.url)
+                        camo_url = self._extract_camo_url(
+                            comment_url=result.url,
+                            comment_id=(result.metadata or {}).get("comment_id"),
+                            repo_name=self.config.github.repo_name
+                        )
                         if camo_url:
                             logger.info("Using GitHub camo URL for downstream platforms")
                             content.image_url = camo_url
@@ -393,9 +397,31 @@ class PublishingService:
         logger.info(f"Publishing completed: {successful_count}/{len(target_publishers)} platforms succeeded")
         return results
 
-    def _extract_camo_url(self, comment_url: str) -> Optional[str]:
-        """从 GitHub 评论页面提取 camo 图片 URL"""
+    def _extract_camo_url(
+        self,
+        comment_url: str,
+        comment_id: Optional[int],
+        repo_name: Optional[str]
+    ) -> Optional[str]:
+        """从 GitHub 评论提取 camo 图片 URL"""
         try:
+            if comment_id and repo_name:
+                api_url = f"https://api.github.com/repos/{repo_name}/issues/comments/{comment_id}"
+                headers = {
+                    "User-Agent": "moning-bot/1.0",
+                    "Accept": "application/vnd.github.v3.html+json"
+                }
+                if self.config.github.token:
+                    headers["Authorization"] = f"token {self.config.github.token}"
+
+                api_response = requests.get(api_url, headers=headers, timeout=15)
+                if api_response.status_code == 200:
+                    body_html = api_response.json().get("body_html", "")
+                    import re
+                    match = re.search(r"https://camo.githubusercontent.com/[^\"]+", body_html)
+                    if match:
+                        return match.group(0)
+
             headers = {
                 "User-Agent": "moning-bot/1.0",
                 "Accept": "text/html"
