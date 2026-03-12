@@ -122,7 +122,15 @@ class GeminiImagenGenerator(ContentGenerator):
                         for url in urls:
                             if any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
                                 # 下载并保存图片
-                                image_path = self._download_image(url, "gemini_imagen")
+                                image_path = self._download_image(
+                                    url,
+                                    "gemini_imagen",
+                                    headers=self._build_auth_headers()
+                                )
+
+                                if not image_path:
+                                    logger.warning("Gemini Imagen image URL was not downloadable, retrying/fallback")
+                                    break
 
                                 logger.info(f"Successfully extracted image URL from Gemini Imagen chat: {url}")
                                 return GeneratedContent(
@@ -157,7 +165,15 @@ class GeminiImagenGenerator(ContentGenerator):
                             image_url = response.data[0].url
                             if image_url:
                                 # 下载并保存图片
-                                image_path = self._download_image(image_url, "gemini_imagen")
+                                image_path = self._download_image(
+                                    image_url,
+                                    "gemini_imagen",
+                                    headers=self._build_auth_headers()
+                                )
+
+                                if not image_path:
+                                    logger.warning("Gemini Imagen image URL was not downloadable")
+                                    return None
 
                                 logger.info(f"Successfully generated Gemini Imagen image on attempt {attempt + 1}")
                                 return GeneratedContent(
@@ -270,7 +286,17 @@ Avoid: text, characters, people, modern elements."""
 
         return prompt
 
-    def _download_image(self, url: str, prefix: str) -> Optional[Path]:
+    def _build_auth_headers(self) -> Dict[str, str]:
+        if not self.config.gemini_imagen.api_key:
+            return {}
+        return {"Authorization": f"Bearer {self.config.gemini_imagen.api_key}"}
+
+    def _download_image(
+        self,
+        url: str,
+        prefix: str,
+        headers: Optional[Dict[str, str]] = None
+    ) -> Optional[Path]:
         """下载图片到本地"""
         try:
             import pendulum
@@ -285,15 +311,24 @@ Avoid: text, characters, people, modern elements."""
             filename = f"{prefix}_{timestamp}_0.jpg"
             filepath = output_dir / filename
 
-            # 下载图片
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
+            # 下载图片（带重试）
+            max_attempts = max(1, min(self.config.app.max_retry_attempts, 3))
+            for attempt in range(max_attempts):
+                try:
+                    response = requests.get(url, timeout=30, headers=headers)
+                    response.raise_for_status()
 
-            with open(filepath, 'wb') as f:
-                f.write(response.content)
+                    with open(filepath, 'wb') as f:
+                        f.write(response.content)
 
-            logger.info(f"Image downloaded to {filepath}")
-            return filepath
+                    logger.info(f"Image downloaded to {filepath}")
+                    return filepath
+                except Exception as e:
+                    if attempt >= max_attempts - 1:
+                        raise
+                    delay = self.config.app.retry_delay_base ** attempt
+                    logger.info(f"Retrying image download in {delay} seconds...")
+                    time.sleep(delay)
 
         except Exception as e:
             logger.error(f"Failed to download image: {e}")
