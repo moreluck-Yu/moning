@@ -70,12 +70,10 @@ class GeminiImagenGenerator(ContentGenerator):
                 api_key=config.gemini_imagen.api_key,
                 base_url=config.gemini_imagen.base_url
             )
-        analysis_api_key = config.openai.api_key or config.gemini_imagen.api_key
-        analysis_base_url = config.openai.base_url if config.openai.api_key else config.gemini_imagen.base_url
-        if analysis_api_key and analysis_base_url:
+        if config.gemini_imagen.api_key:
             self.analysis_client = OpenAI(
-                api_key=analysis_api_key,
-                base_url=analysis_base_url
+                api_key=config.gemini_imagen.api_key,
+                base_url=config.gemini_imagen.base_url
             )
 
     def is_available(self) -> bool:

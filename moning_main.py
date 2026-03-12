@@ -212,8 +212,6 @@ def create_argument_parser() -> argparse.ArgumentParser:
   GEMINI_IMAGEN_API_KEY - Gemini Imagen API 密钥
   GEMINI_IMAGEN_API_BASE - Gemini Imagen API 地址（可选覆盖）
   FENXI_MODEL           - 诗词主题分析模型（可选覆盖）
-  OPENAI_API_KEY        - 主题分析 API Key（可选，未设置则复用 GEMINI_IMAGEN_API_KEY）
-  OPENAI_API_BASE       - 主题分析 API Base（可选，未设置则复用 GEMINI_IMAGEN_API_BASE）
   UNSPLASH_ACCESS_KEY   - Unsplash API 密钥
   GITHUB_TOKEN          - GitHub 访问令牌
   GITHUB_REPO           - GitHub 仓库名 (格式: owner/repo)
