@@ -69,7 +69,11 @@ class MoningApp:
                 self.metrics.record_content_generation("overall", success, 0, source)
 
             # 3. 获取天气与每日格言
-            auto_weather = weather_message or self._get_weather_message()
+            raw_weather = (weather_message or "").strip()
+            if raw_weather in {"", ":", "："}:
+                auto_weather = self._get_weather_message()
+            else:
+                auto_weather = raw_weather
             daily_quote = self._get_daily_quote()
 
             # 4. 创建发布内容
