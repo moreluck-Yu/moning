@@ -24,8 +24,8 @@ GEMINI_IMAGEN_MAX_RETRIES="3"                      # 可选
 UNSPLASH_ACCESS_KEY="your-unsplash-key"            # 必需
 GITHUB_TOKEN="your-github-token"                   # 必需
 GITHUB_REPO="owner/repo"                           # 必需
-TELEGRAM_TOKEN="your-telegram-token"               # 可选
-TELEGRAM_CHAT_ID="your-chat-id"                    # 可选
+TG_TOKEN="your-telegram-token"               # 可选
+TG_CHAT_ID="your-chat-id"                    # 可选
 
 # 主题分析模型（可选覆盖）
 FENXI_MODEL="grok-4.1-thinking"

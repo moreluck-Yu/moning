@@ -117,8 +117,8 @@ class TelegramConfig:
     @classmethod
     def from_env(cls) -> 'TelegramConfig':
         return cls(
-            token=os.environ.get("TELEGRAM_TOKEN"),
-            chat_id=os.environ.get("TELEGRAM_CHAT_ID")
+            token=os.environ.get("TG_TOKEN"),
+            chat_id=os.environ.get("TG_CHAT_ID")
         )
 
 
@@ -200,7 +200,7 @@ class MoningConfig:
 
         # Telegram 配置是可选的，但如果提供了 token 就需要 chat_id
         if self.telegram.token and not self.telegram.chat_id:
-            errors.append("TELEGRAM_CHAT_ID is required when TELEGRAM_TOKEN is provided")
+            errors.append("TG_CHAT_ID is required when TG_TOKEN is provided")
 
         # 检查输出目录
         if not self.app.output_dir.exists():

@@ -142,8 +142,8 @@ python get_up.py \
   --github-token $GITHUB_TOKEN \
   --repo-name $GITHUB_REPO \
   --weather-message "晴天" \
-  --tele-token $TELEGRAM_TOKEN \
-  --tele-chat-id $TELEGRAM_CHAT_ID \
+  --tele-token $TG_TOKEN \
+  --tele-chat-id $TG_CHAT_ID \
   --dry-run
 ```
 
@@ -168,8 +168,8 @@ export GEMINI_IMAGEN_API_KEY="your-key"
 export UNSPLASH_ACCESS_KEY="your-key"
 export GITHUB_TOKEN="your-token"
 export GITHUB_REPO="owner/repo"
-export TELEGRAM_TOKEN="your-token"      # 可选
-export TELEGRAM_CHAT_ID="your-chat-id"  # 可选
+export TG_TOKEN="your-token"      # 可选
+export TG_CHAT_ID="your-chat-id"  # 可选
 
 # 可选变量（代码内有默认值，仅在需要覆盖时设置）
 export GEMINI_IMAGEN_API_BASE="https://ai.huan666.de/v1"

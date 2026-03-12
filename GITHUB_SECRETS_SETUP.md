@@ -28,10 +28,10 @@
 - **Name**: `UNSPLASH_ACCESS_KEY`
 - **Value**: Unsplash Access Key
 
-#### **TELEGRAM_TOKEN** / **TELEGRAM_CHAT_ID** (可选)
-- **Name**: `TELEGRAM_TOKEN`
+#### **TG_TOKEN** / **TG_CHAT_ID** (可选)
+- **Name**: `TG_TOKEN`
 - **Value**: Telegram Bot Token
-- **Name**: `TELEGRAM_CHAT_ID`
+- **Name**: `TG_CHAT_ID`
 - **Value**: Telegram Chat ID
 
 ### 4. 可选环境变量（可放在 workflow 中）
@@ -53,8 +53,8 @@ env:
   UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
-  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TG_TOKEN: ${{ secrets.TG_TOKEN }}
+  TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
 ```
 
 ## 🚀 测试配置

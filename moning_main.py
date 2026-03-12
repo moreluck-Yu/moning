@@ -217,8 +217,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
   UNSPLASH_ACCESS_KEY   - Unsplash API 密钥
   GITHUB_TOKEN          - GitHub 访问令牌
   GITHUB_REPO           - GitHub 仓库名 (格式: owner/repo)
-  TELEGRAM_TOKEN        - Telegram Bot 令牌 (可选)
-  TELEGRAM_CHAT_ID      - Telegram 聊天 ID (可选)
+  TG_TOKEN              - Telegram Bot 令牌 (可选)
+  TG_CHAT_ID            - Telegram 聊天 ID (可选)
         """
     )
 
