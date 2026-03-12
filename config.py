@@ -129,6 +129,10 @@ class AppConfig:
     output_dir: Path = Path("OUT_DIR")
     sentence_api: str = "https://v1.jinrishici.com/all"
     default_sentence: str = "赏花归去马如飞\r\n去马如飞酒力微\r\n酒力微醒时已暮\r\n醒时已暮赏花归\r\n"
+    weather_city_code: str = "101180801"
+    weather_api_base: str = "http://t.weather.sojson.com"
+    tian_api_key: Optional[str] = None
+    tian_api_url: str = "https://api.tianapi.com/txapi/mingyan/index"
 
     # 图片生成配置
     image_generation_timeout: int = 60
@@ -153,6 +157,10 @@ class AppConfig:
             timezone=os.environ.get("TIMEZONE", "Asia/Shanghai"),
             output_dir=Path(os.environ.get("OUTPUT_DIR", "OUT_DIR")),
             sentence_api=os.environ.get("SENTENCE_API", "https://v1.jinrishici.com/all"),
+            weather_city_code="101180801",
+            weather_api_base="http://t.weather.sojson.com",
+            tian_api_key=os.environ.get("TIAN_API_KEY"),
+            tian_api_url="https://api.tianapi.com/txapi/mingyan/index",
             image_generation_timeout=int(os.environ.get("IMAGE_GENERATION_TIMEOUT", "60")),
             max_retry_attempts=int(os.environ.get("MAX_RETRY_ATTEMPTS", "3")),
             retry_delay_base=int(os.environ.get("RETRY_DELAY_BASE", "2"))

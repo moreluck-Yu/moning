@@ -480,6 +480,7 @@ def create_checkin_content(
     image_path: Optional[Path] = None,
     image_url: Optional[str] = None,
     weather_message: str = "",
+    daily_quote: str = "",
     timezone: str = "Asia/Shanghai"
 ) -> PublishContent:
     """创建打卡内容"""
@@ -515,6 +516,9 @@ def create_checkin_content(
 
     if weather_message:
         message_parts.extend(["", "🌤️ 天气信息:", weather_message])
+
+    if daily_quote:
+        message_parts.extend(["", "💬 每日格言:", daily_quote])
 
     text = "\r\n".join(message_parts)
 

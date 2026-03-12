@@ -6,6 +6,9 @@ Moning 项目重构后的主程序
 import argparse
 import logging
 import sys
+import urllib.parse
+from typing import Optional
+import requests
 from pathlib import Path
 
 # 导入新的模块化组件
@@ -65,16 +68,21 @@ class MoningApp:
                 source = generated_content.source if generated_content else "none"
                 self.metrics.record_content_generation("overall", success, 0, source)
 
-            # 3. 创建发布内容
+            # 3. 获取天气与每日格言
+            auto_weather = weather_message or self._get_weather_message()
+            daily_quote = self._get_daily_quote()
+
+            # 4. 创建发布内容
             publish_content = create_checkin_content(
                 sentence=sentence,
                 image_path=generated_content.image_path if generated_content else None,
                 image_url=generated_content.image_url if generated_content else None,
-                weather_message=weather_message,
+                weather_message=auto_weather,
+                daily_quote=daily_quote,
                 timezone=self.config.app.timezone
             )
 
-            # 4. 发布内容
+            # 5. 发布内容
             if dry_run:
                 logger.info("DRY RUN MODE - Content would be published:")
                 logger.info(f"Text: {publish_content.text}")
@@ -131,6 +139,74 @@ class MoningApp:
         else:
             logger.warning("Failed to get sentence from API, using default")
             return self.config.app.default_sentence
+
+    def _get_weather_message(self) -> str:
+        """获取天气信息"""
+        city_code = self.config.app.weather_city_code
+        if not city_code:
+            return ""
+
+        base = self.config.app.weather_api_base.rstrip("/")
+        weather_api = f"{base}/api/weather/city/{city_code}"
+        default_weather = "未查询到天气"
+        template = "今天是{date} {week}的天气是{type}，{high}，{low}，空气量指数{aqi},tips:{notice}"
+
+        try:
+            response = requests.get(weather_api, timeout=10)
+            if response.ok:
+                data = response.json()
+                forecast = (data.get("data") or {}).get("forecast") or []
+                if forecast:
+                    today = forecast[0]
+                    return template.format(
+                        date=today.get("ymd", ""),
+                        week=today.get("week", ""),
+                        type=today.get("type", ""),
+                        high=today.get("high", ""),
+                        low=today.get("low", ""),
+                        aqi=today.get("aqi", ""),
+                        notice=today.get("notice", "")
+                    ).strip()
+            return default_weather
+        except Exception as e:
+            logger.warning(f"Failed to get weather: {e}")
+            return default_weather
+
+    def _get_daily_quote(self) -> str:
+        """获取每日格言"""
+        api_key = self.config.app.tian_api_key
+        if not api_key:
+            return ""
+
+        base_url = self.config.app.tian_api_url
+        try:
+            params = {"key": api_key}
+            url = f"{base_url}?{urllib.parse.urlencode(params)}"
+            response = requests.get(url, timeout=10)
+            if not response.ok:
+                return ""
+
+            data = response.json()
+            news = data.get("newslist") or []
+            if not news:
+                return ""
+
+            item = news[0]
+            content = (
+                item.get("content")
+                or item.get("saying")
+                or item.get("title")
+                or item.get("note")
+                or ""
+            )
+            author = item.get("author") or item.get("source") or item.get("origin") or ""
+
+            if content and author:
+                return f"{content} —— {author}"
+            return content
+        except Exception as e:
+            logger.warning(f"Failed to get daily quote: {e}")
+            return ""
 
     def get_system_status(self) -> dict:
         """获取系统状态"""
@@ -217,6 +293,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
   GITHUB_REPO           - GitHub 仓库名 (格式: owner/repo)
   TG_TOKEN              - Telegram Bot 令牌 (可选)
   TG_CHAT_ID            - Telegram 聊天 ID (可选)
+  TIAN_API_KEY          - 天行数据每日格言 Key (可选)
         """
     )
 
