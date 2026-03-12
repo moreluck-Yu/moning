@@ -18,6 +18,8 @@ env:
   UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_REPO: ${{ github.repository }}
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
   sync:
@@ -38,7 +40,7 @@ jobs:
 
       - name: GET UP
         run: |
-          python moning_main.py --github-token ${{ secrets.G_T }} --repo-name ${{ github.repository }} --weather ": ${{ github.event.inputs.message }}" --telegram-token ${{ secrets.TG_TOKEN }} --telegram-chat-id ${{ secrets.TG_CHAT_ID }}
+          python moning_main.py --weather ": ${{ github.event.inputs.message }}"
 
       - name: Push New Pic
         run: |
