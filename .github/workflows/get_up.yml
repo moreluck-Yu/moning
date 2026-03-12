@@ -20,6 +20,7 @@ env:
   GITHUB_REPO: ${{ github.repository }}
   TG_TOKEN: ${{ secrets.TG_TOKEN }}
   TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+  TIAN_API_KEY: ${{ secrets.TIAN_API_KEY }}
 
 jobs:
   sync:
