@@ -129,8 +129,7 @@ class GeminiImagenGenerator(ContentGenerator):
                                 )
 
                                 if not image_path:
-                                    logger.warning("Gemini Imagen image URL was not downloadable, retrying/fallback")
-                                    break
+                                    logger.warning("Gemini Imagen image URL was not downloadable, using URL only")
 
                                 logger.info(f"Successfully extracted image URL from Gemini Imagen chat: {url}")
                                 return GeneratedContent(
@@ -172,8 +171,7 @@ class GeminiImagenGenerator(ContentGenerator):
                                 )
 
                                 if not image_path:
-                                    logger.warning("Gemini Imagen image URL was not downloadable")
-                                    return None
+                                    logger.warning("Gemini Imagen image URL was not downloadable, using URL only")
 
                                 logger.info(f"Successfully generated Gemini Imagen image on attempt {attempt + 1}")
                                 return GeneratedContent(
