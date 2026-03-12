@@ -35,9 +35,10 @@
 - **Value**: Telegram Chat ID
 
 ### 4. 可选环境变量（可放在 workflow 中）
-这些不一定需要存为 Secret：
+这些不一定需要存为 Secret，代码内已有默认值，仅在需要覆盖时设置：
 - `GEMINI_IMAGEN_API_BASE`（自定义 API Base 时使用）
-- `GEMINI_IMAGEN_MODEL`
+- `GEMINI_IMAGEN_MODEL`（默认 `nano-banana`）
+- `FENXI_MODEL`（默认 `grok-4.1-thinking`）
 - `GEMINI_IMAGEN_TIMEOUT`
 - `UNSPLASH_TIMEOUT`
 - `OUTPUT_DIR`

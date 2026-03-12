@@ -7,16 +7,16 @@
 ## ✅ 修正后的正确配置
 
 ### AI图像生成服务
-- **使用模型**: `gemini-imagen`
+- **使用模型**: `nano-banana`
 - **API提供商**: Gemini Imagen
-- **默认API地址**: `https://free.nanohajimi.mom/v1`
+- **默认API地址**: `https://ai.huan666.de/v1`
 
 ### 环境变量配置
 ```bash
 # 正确的环境变量（与原系统保持一致）
-GEMINI_IMAGEN_API_KEY="your-gemini-imagen-key"     # 必需
-GEMINI_IMAGEN_API_BASE="https://free.nanohajimi.mom/v1" # 可选
-GEMINI_IMAGEN_MODEL="gemini-imagen"                # 可选
+GEMINI_IMAGEN_API_KEY="your-gemini-imagen-key"         # 必需
+GEMINI_IMAGEN_API_BASE="https://ai.huan666.de/v1"       # 可选（覆盖默认）
+GEMINI_IMAGEN_MODEL="nano-banana"                       # 可选（覆盖默认）
 GEMINI_IMAGEN_TIMEOUT="60"                         # 可选
 GEMINI_IMAGEN_MAX_RETRIES="3"                      # 可选
 
@@ -26,6 +26,9 @@ GITHUB_TOKEN="your-github-token"                   # 必需
 GITHUB_REPO="owner/repo"                           # 必需
 TELEGRAM_TOKEN="your-telegram-token"               # 可选
 TELEGRAM_CHAT_ID="your-chat-id"                    # 可选
+
+# 主题分析模型（可选覆盖）
+FENXI_MODEL="grok-4.1-thinking"
 ```
 
 ## 🔧 技术实现特点

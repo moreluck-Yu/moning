@@ -9,6 +9,11 @@ from typing import Optional, List
 from pathlib import Path
 
 
+DEFAULT_GEMINI_IMAGEN_BASE = "https://ai.huan666.de/v1"
+DEFAULT_GEMINI_IMAGEN_MODEL = "nano-banana"
+DEFAULT_FENXI_MODEL = "grok-4.1-thinking"
+
+
 def _normalize_openai_base_url(base_url: Optional[str], default: str) -> str:
     """Normalize OpenAI-compatible base URLs to include the /v1 suffix."""
     value = (base_url or default).rstrip("/")
@@ -33,14 +38,13 @@ class GeminiImagenConfig(APIConfig):
 
     @classmethod
     def from_env(cls) -> 'GeminiImagenConfig':
-        default_base_url = "https://ai.huan666.de/v1"
-        model = os.environ.get("GEMINI_IMAGEN_MODEL", "gemini-imagen")
+        model = os.environ.get("GEMINI_IMAGEN_MODEL", DEFAULT_GEMINI_IMAGEN_MODEL)
         if not model:
-            model = "gemini-imagen"
+            model = DEFAULT_GEMINI_IMAGEN_MODEL
         return cls(
             base_url=_normalize_openai_base_url(
                 os.environ.get("GEMINI_IMAGEN_API_BASE"),
-                default_base_url
+                DEFAULT_GEMINI_IMAGEN_BASE
             ),
             api_key=os.environ.get("GEMINI_IMAGEN_API_KEY"),
             model=model,
@@ -73,11 +77,14 @@ class OpenAIConfig(APIConfig):
 
     @classmethod
     def from_env(cls) -> 'OpenAIConfig':
-        model = os.environ.get("OPENAI_MODEL", "gpt-4")
+        model = os.environ.get("FENXI_MODEL", DEFAULT_FENXI_MODEL)
         if not model:
-            model = "gpt-4"
+            model = DEFAULT_FENXI_MODEL
         return cls(
-            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
+            base_url=_normalize_openai_base_url(
+                os.environ.get("OPENAI_API_BASE"),
+                DEFAULT_GEMINI_IMAGEN_BASE
+            ),
             api_key=os.environ.get("OPENAI_API_KEY"),
             model=model,
             timeout=int(os.environ.get("OPENAI_TIMEOUT", "60")),

@@ -171,8 +171,10 @@ export GITHUB_REPO="owner/repo"
 export TELEGRAM_TOKEN="your-token"      # 可选
 export TELEGRAM_CHAT_ID="your-chat-id"  # 可选
 
-# 可选变量
+# 可选变量（代码内有默认值，仅在需要覆盖时设置）
 export GEMINI_IMAGEN_API_BASE="https://ai.huan666.de/v1"
+export GEMINI_IMAGEN_MODEL="nano-banana"
+export FENXI_MODEL="grok-4.1-thinking"
 export GEMINI_IMAGEN_TIMEOUT="60"
 export MAX_RETRY_ATTEMPTS="3"
 export OUTPUT_DIR="OUT_DIR"
