@@ -98,43 +98,7 @@ class GeminiImagenGenerator(ContentGenerator):
                 try:
                     logger.info(f"Gemini Imagen image generation attempt {attempt + 1}")
 
-                    # 优先使用 images 接口
-                    try:
-                        response = self.client.images.generate(
-                            model=self.config.gemini_imagen.model,
-                            prompt=prompt,
-                            size=request.size,
-                            quality="standard",
-                            n=1
-                        )
-
-                        if response.data and len(response.data) > 0:
-                            image_url = response.data[0].url
-                            if image_url:
-                                # 下载并保存图片
-                                image_path = self._download_image(image_url, "gemini_imagen")
-
-                                logger.info(f"Successfully generated Gemini Imagen image on attempt {attempt + 1}")
-                                return GeneratedContent(
-                                    image_url=image_url,
-                                    image_path=image_path,
-                                    source="ai_generated",
-                                    metadata={
-                                        "generator": "gemini_imagen",
-                                        "theme": theme,
-                                        "elements": elements,
-                                        "prompt": prompt,
-                                        "attempt": attempt + 1,
-                                        "method": "images_api"
-                                    }
-                                )
-
-                        logger.warning("Gemini Imagen images API returned no usable URL, fallback to chat API")
-
-                    except Exception as images_error:
-                        logger.warning(f"Gemini Imagen images API failed, fallback to chat API: {images_error}")
-
-                    # 回退到 chat 接口
+                    # 优先使用 chat 接口
                     chat_response = self.client.chat.completions.create(
                         model=self.config.gemini_imagen.model,
                         messages=[
@@ -176,6 +140,44 @@ class GeminiImagenGenerator(ContentGenerator):
                                 )
 
                         logger.warning("No valid image URL found in Gemini Imagen chat response")
+
+                    logger.warning("Gemini Imagen chat API returned no usable URL, fallback to images API")
+
+                    # 回退到 images 接口
+                    try:
+                        response = self.client.images.generate(
+                            model=self.config.gemini_imagen.model,
+                            prompt=prompt,
+                            size=request.size,
+                            quality="standard",
+                            n=1
+                        )
+
+                        if response.data and len(response.data) > 0:
+                            image_url = response.data[0].url
+                            if image_url:
+                                # 下载并保存图片
+                                image_path = self._download_image(image_url, "gemini_imagen")
+
+                                logger.info(f"Successfully generated Gemini Imagen image on attempt {attempt + 1}")
+                                return GeneratedContent(
+                                    image_url=image_url,
+                                    image_path=image_path,
+                                    source="ai_generated",
+                                    metadata={
+                                        "generator": "gemini_imagen",
+                                        "theme": theme,
+                                        "elements": elements,
+                                        "prompt": prompt,
+                                        "attempt": attempt + 1,
+                                        "method": "images_api"
+                                    }
+                                )
+
+                        logger.warning("Gemini Imagen images API returned no usable URL")
+
+                    except Exception as images_error:
+                        logger.warning(f"Gemini Imagen images API failed: {images_error}")
 
                     logger.warning(f"Gemini Imagen image generation returned no result (attempt {attempt + 1})")
 
