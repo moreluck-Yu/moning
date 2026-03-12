@@ -217,7 +217,7 @@ def main():
         print("某些测试可能会失败，但系统架构测试仍会继续")
 
     if not os.environ.get("GEMINI_IMAGEN_API_KEY"):
-        print("\nℹ️  未设置 GEMINI_IMAGEN_API_KEY，当前将使用 config.py 中的默认生图配置")
+        print("\nℹ️  未设置 GEMINI_IMAGEN_API_KEY，AI 生图将不可用，系统会走降级策略")
 
     test_results = []
 

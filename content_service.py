@@ -64,10 +64,16 @@ class GeminiImagenGenerator(ContentGenerator):
     def __init__(self, config: MoningConfig):
         super().__init__(config)
         self.client = None
+        self.analysis_client = None
         if config.gemini_imagen.api_key:
             self.client = OpenAI(
                 api_key=config.gemini_imagen.api_key,
                 base_url=config.gemini_imagen.base_url
+            )
+        if config.openai.api_key:
+            self.analysis_client = OpenAI(
+                api_key=config.openai.api_key,
+                base_url=config.openai.base_url
             )
 
     def is_available(self) -> bool:
@@ -188,9 +194,12 @@ class GeminiImagenGenerator(ContentGenerator):
     def _analyze_poetry_theme(self, sentence: str) -> Tuple[str, Dict[str, List[str]]]:
         """分析诗词主题"""
         try:
-            # 使用 OpenAI 客户端进行主题分析
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",  # 使用通用模型进行分析
+            if not self.analysis_client:
+                return self._fallback_theme(sentence)
+
+            # 使用分析客户端进行主题分析
+            response = self.analysis_client.chat.completions.create(
+                model=self.config.openai.model,
                 messages=[
                     {
                         "role": "system",
@@ -222,7 +231,25 @@ class GeminiImagenGenerator(ContentGenerator):
 
         except Exception as e:
             logger.error(f"Failed to analyze poetry theme: {e}")
-            return "自然风光", {"elements": ["mountain", "water", "sky"]}
+            return self._fallback_theme(sentence)
+
+    def _fallback_theme(self, sentence: str) -> Tuple[str, Dict[str, List[str]]]:
+        """主题分析失败时的兜底策略"""
+        elements = []
+        for char in sentence:
+            if char in POETRY_KEYWORD_MAPPING:
+                elements.extend(POETRY_KEYWORD_MAPPING[char])
+
+        if not elements:
+            elements = POETRY_KEYWORD_MAPPING["default"]
+
+        # 去重并保留顺序
+        deduped = []
+        for item in elements:
+            if item not in deduped:
+                deduped.append(item)
+
+        return "自然风光", {"elements": deduped[:6]}
 
     def _build_image_prompt(self, sentence: str, theme: str, elements: Dict[str, List[str]]) -> str:
         """构建图片生成提示词"""

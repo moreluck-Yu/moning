@@ -34,13 +34,16 @@ class GeminiImagenConfig(APIConfig):
     @classmethod
     def from_env(cls) -> 'GeminiImagenConfig':
         default_base_url = "https://ai.huan666.de/v1"
+        model = os.environ.get("GEMINI_IMAGEN_MODEL", "gemini-imagen")
+        if not model:
+            model = "gemini-imagen"
         return cls(
             base_url=_normalize_openai_base_url(
                 os.environ.get("GEMINI_IMAGEN_API_BASE"),
                 default_base_url
             ),
             api_key=os.environ.get("GEMINI_IMAGEN_API_KEY"),
-            model=os.environ.get("GEMINI_IMAGEN_MODEL", "gemini-imagen"),
+            model=model,
             timeout=int(os.environ.get("GEMINI_IMAGEN_TIMEOUT", "60")),
             max_retries=int(os.environ.get("GEMINI_IMAGEN_MAX_RETRIES", "3"))
         )
@@ -70,10 +73,13 @@ class OpenAIConfig(APIConfig):
 
     @classmethod
     def from_env(cls) -> 'OpenAIConfig':
+        model = os.environ.get("OPENAI_MODEL", "gpt-4")
+        if not model:
+            model = "gpt-4"
         return cls(
             base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
             api_key=os.environ.get("OPENAI_API_KEY"),
-            model=os.environ.get("OPENAI_MODEL", "gpt-4"),
+            model=model,
             timeout=int(os.environ.get("OPENAI_TIMEOUT", "60")),
             max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", "3"))
         )
