@@ -368,6 +368,13 @@ class PublishingService:
                 if result.success:
                     successful_count += 1
                     logger.info(f"Successfully published to {platform_name}")
+
+                    # GitHub 成功后，尝试使用 camo 代理 URL 供后续平台使用
+                    if platform_name == "github" and content.image_url and result.url:
+                        camo_url = self._extract_camo_url(result.url)
+                        if camo_url:
+                            logger.info("Using GitHub camo URL for downstream platforms")
+                            content.image_url = camo_url
                 else:
                     logger.warning(f"Failed to publish to {platform_name}: {result.message}")
 
@@ -385,6 +392,31 @@ class PublishingService:
 
         logger.info(f"Publishing completed: {successful_count}/{len(target_publishers)} platforms succeeded")
         return results
+
+    def _extract_camo_url(self, comment_url: str) -> Optional[str]:
+        """从 GitHub 评论页面提取 camo 图片 URL"""
+        try:
+            headers = {
+                "User-Agent": "moning-bot/1.0",
+                "Accept": "text/html"
+            }
+            if self.config.github.token:
+                headers["Authorization"] = f"token {self.config.github.token}"
+
+            response = requests.get(comment_url, headers=headers, timeout=15)
+            response.raise_for_status()
+
+            import re
+            match = re.search(r"https://camo.githubusercontent.com/[^\"]+", response.text)
+            if match:
+                return match.group(0)
+
+            logger.warning("No camo URL found in GitHub comment page")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Failed to extract camo URL: {e}")
+            return None
 
     def get_available_platforms(self) -> List[str]:
         """获取可用的发布平台列表"""
