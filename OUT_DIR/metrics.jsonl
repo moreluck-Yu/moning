@@ -375,3 +375,19 @@
 {"name": "daily_checkin_total", "value": 1.0, "timestamp": 1774583219.4728835, "labels": {"status": "success"}, "type": "counter"}
 {"name": "moning_app_duration", "value": 95.37268471717834, "timestamp": 1774583219.4729137, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "histogram"}
 {"name": "moning_app_operations_total", "value": 1.0, "timestamp": 1774583219.4729242, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "counter"}
+{"name": "content_generation_total", "value": 1.0, "timestamp": 1774668731.4161885, "labels": {"generator": "overall", "source": "ai_generated", "status": "success"}, "type": "counter"}
+{"name": "content_generation_duration", "value": 0, "timestamp": 1774668731.4163444, "labels": {"generator": "overall", "source": "ai_generated", "status": "success"}, "type": "histogram"}
+{"name": "content_generation_success_total", "value": 1.0, "timestamp": 1774668731.4163554, "labels": {"generator": "overall"}, "type": "counter"}
+{"name": "publishing_total", "value": 1.0, "timestamp": 1774668734.6287236, "labels": {"platform": "github", "status": "success"}, "type": "counter"}
+{"name": "publishing_duration", "value": 0, "timestamp": 1774668734.6287434, "labels": {"platform": "github", "status": "success"}, "type": "histogram"}
+{"name": "publishing_duration", "value": 1.3537180423736572, "timestamp": 1774668734.6288188, "labels": {"component": "publishing", "operation": "github_publish", "status": "success"}, "type": "histogram"}
+{"name": "publishing_operations_total", "value": 1.0, "timestamp": 1774668734.628824, "labels": {"component": "publishing", "operation": "github_publish", "status": "success"}, "type": "counter"}
+{"name": "publishing_total", "value": 1.0, "timestamp": 1774668736.547563, "labels": {"platform": "telegram", "status": "success"}, "type": "counter"}
+{"name": "publishing_duration", "value": 1.6412017345428467, "timestamp": 1774668736.5475779, "labels": {"platform": "telegram", "status": "success"}, "type": "histogram"}
+{"name": "publishing_duration", "value": 1.6412444114685059, "timestamp": 1774668736.5475981, "labels": {"component": "publishing", "operation": "telegram_publish", "status": "success"}, "type": "histogram"}
+{"name": "publishing_operations_total", "value": 1.0, "timestamp": 1774668736.5476024, "labels": {"component": "publishing", "operation": "telegram_publish", "status": "success"}, "type": "counter"}
+{"name": "publishing_duration", "value": 0.0004475116729736328, "timestamp": 1774668736.5482607, "labels": {"component": "publishing", "operation": "local_publish", "status": "success"}, "type": "histogram"}
+{"name": "publishing_operations_total", "value": 1.0, "timestamp": 1774668736.5482676, "labels": {"component": "publishing", "operation": "local_publish", "status": "success"}, "type": "counter"}
+{"name": "daily_checkin_total", "value": 1.0, "timestamp": 1774668736.5485, "labels": {"status": "success"}, "type": "counter"}
+{"name": "moning_app_duration", "value": 67.9967610836029, "timestamp": 1774668736.5485282, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "histogram"}
+{"name": "moning_app_operations_total", "value": 1.0, "timestamp": 1774668736.548537, "labels": {"component": "moning_app", "operation": "daily_checkin", "status": "success"}, "type": "counter"}
